@@ -1,10 +1,11 @@
 /**
  * Support & Resistance Detection Engine (TradeLine AI)
- * Features Smart Unusable & Redundant Line Pruning:
- * 1. Merges duplicate/clustered lines within 2.5% price proximity.
- * 2. Filters out broken/invalidated lines where price closed past the level.
- * 3. Filters out far out-of-range lines (>35% distance).
- * 4. Caps output to Top 5 strongest, most relevant Support & Resistance lines.
+ * Enhanced with Professional S/R Drawing Logic:
+ * 1. Pivot Highs & Lows detection using multi-candle swing window.
+ * 2. Pivot Clustering into price zones using rolling median/average level drawing.
+ * 3. Strength ranking using touch counts, recency decay (recent wicks count more), and psychological round number alignment.
+ * 4. Invalidation/Break rules confirmed strictly on candle close beyond the zone.
+ * 5. Multi-timeframe confluence zones and Smart Pruned deduplication.
  */
 
 export function detectSupportResistance(candles, options = {}) {
@@ -18,14 +19,13 @@ export function detectSupportResistance(candles, options = {}) {
     return { supportLines: [], resistanceLines: [], allLines: [], slantedLines: [] };
   }
 
-  // Handle minBounces = 0 (Disabled state)
   if (minBounces === 0) {
     return { supportLines: [], resistanceLines: [], allLines: [], slantedLines: [] };
   }
 
   const currentPrice = candles[candles.length - 1].close;
 
-  // Step 1: Detect Major Pivot Highs and Pivot Lows with window size
+  // Step 1 — Detect swing highs and swing lows (pivots)
   const pivotHighs = [];
   const pivotLows = [];
 
@@ -53,12 +53,11 @@ export function detectSupportResistance(candles, options = {}) {
     }
   }
 
-  // --- PART A: Horizontal Support & Resistance Lines ---
+  // Step 2 — Cluster pivots into zones (0.5% - 1.2% tolerance bands)
   const allPivots = [...pivotHighs, ...pivotLows];
   const sortedPivots = [...allPivots].sort((a, b) => a.price - b.price);
   const clusters = [];
 
-  // Group pivots into price clusters
   for (const pivot of sortedPivots) {
     let matchedCluster = null;
     for (const cluster of clusters) {
@@ -85,7 +84,11 @@ export function detectSupportResistance(candles, options = {}) {
 
   const candidateHorizontalLines = [];
   clusters.forEach((cluster, idx) => {
-    const levelPrice = cluster.totalPrice / cluster.count;
+    // Boundary level drawn at median to reject outlier stop-hunt wicks
+    const sortedPrices = cluster.pivots.map(p => p.price).sort((a, b) => a - b);
+    const midIdx = Math.floor(sortedPrices.length / 2);
+    const levelPrice = sortedPrices.length % 2 !== 0 ? sortedPrices[midIdx] : (sortedPrices[midIdx - 1] + sortedPrices[midIdx]) / 2;
+
     const tolerance = levelPrice * (tolerancePct / 100);
 
     const bounceEvents = [];
@@ -109,8 +112,20 @@ export function detectSupportResistance(candles, options = {}) {
       }
     }
 
-    if (bounceEvents.length >= minBounces) {
+    if (bounceEvents.length >= Math.max(2, minBounces)) {
       const isSupport = currentPrice >= levelPrice;
+
+      // Recency calculation (decay factor for older touches)
+      const lastTouchIdx = bounceEvents[bounceEvents.length - 1].index;
+      const recencyWeight = lastTouchIdx / candles.length; // Close to 1 means recent
+
+      // Psychological round number check (e.g. alignment to multiples of 0.05, 0.10, 0.50, 1.00, etc.)
+      const isRoundNumber = checkPsychologicalRound(levelPrice);
+      const psychologicalBonus = isRoundNumber ? 15 : 0;
+
+      // Strength Ranking: touch count + recency decay + psychological level alignment
+      const strength = Math.min(100, Math.round(bounceEvents.length * 15 + recencyWeight * 20 + psychologicalBonus));
+
       candidateHorizontalLines.push({
         id: `h-${idx}-${Math.round(levelPrice * 1000)}`,
         price: levelPrice,
@@ -118,24 +133,23 @@ export function detectSupportResistance(candles, options = {}) {
         bounceDetails: bounceEvents,
         type: isSupport ? 'SUPPORT' : 'RESISTANCE',
         isSlanted: false,
-        strength: Math.min(100, Math.round(bounceEvents.length * 20 + 20)),
+        strength,
         distancePct: Number((((levelPrice - currentPrice) / currentPrice) * 100).toFixed(2))
       });
     }
   });
 
-  // --- PART B: Slanted Trendline Detection ---
+  // Trendline-Specific Rules (Diagonal S/R)
   const candidateSlantedLines = [];
 
   function detectTrendlinesForPivots(pivots, isLowPivot) {
     const lines = [];
-    // Only compare major pivots separated by at least 15 bars
     for (let a = 0; a < pivots.length - 1; a++) {
       for (let b = a + 1; b < pivots.length; b++) {
         const p1 = pivots[a];
         const p2 = pivots[b];
         const indexDiff = p2.index - p1.index;
-        if (indexDiff < 15) continue;
+        if (indexDiff < 15) continue; // Minimum separation for meaningful trend
 
         const slope = (p2.price - p1.price) / indexDiff;
         const intercept = p1.price - slope * p1.index;
@@ -161,8 +175,24 @@ export function detectSupportResistance(candles, options = {}) {
           }
         }
 
-        if (touches.length >= minBounces) {
-          lines.push({ p1, p2, slope, intercept, bounces: touches.length, bounceDetails: touches, type: isLowPivot ? 'SUPPORT' : 'RESISTANCE' });
+        // Steeper trendlines break faster - calculate slope angle impact
+        const angleImpact = Math.abs(slope) > 0.05 ? 0.75 : 1.0;
+
+        if (touches.length >= Math.max(2, minBounces)) {
+          const lastTouchIdx = touches[touches.length - 1].index;
+          const recencyWeight = lastTouchIdx / candles.length;
+          const strength = Math.min(100, Math.round((touches.length * 15 + recencyWeight * 20) * angleImpact));
+
+          lines.push({ 
+            p1, 
+            p2, 
+            slope, 
+            intercept, 
+            bounces: touches.length, 
+            bounceDetails: touches, 
+            type: isLowPivot ? 'SUPPORT' : 'RESISTANCE',
+            strength
+          });
         }
       }
     }
@@ -197,15 +227,14 @@ export function detectSupportResistance(candles, options = {}) {
       bounceDetails: tl.bounceDetails,
       type: tl.type,
       isSlanted: true,
-      strength: Math.min(100, Math.round(tl.bounces * 20 + 20)),
+      strength: tl.strength,
       distancePct: Number((((endPrice - currentPrice) / currentPrice) * 100).toFixed(2))
     });
   });
 
-  // --- PART C: FILTER MODE SELECTION ---
   const filterMode = options.filterMode || 'smart';
 
-  // Rule 1: Deduplicate / Merge lines that are within 2.5% of each other (keep highest bounce count)
+  // Rule 2 — Deduplicate / Merge lines within 2.5% price proximity
   function pruneRedundantLines(lines) {
     const pruned = [];
     const sorted = [...lines].sort((a, b) => b.bounces - a.bounces);
@@ -224,16 +253,18 @@ export function detectSupportResistance(candles, options = {}) {
     return pruned;
   }
 
-  // Rule 2: Filter out lines that are broken or far out-of-range (>35% away)
+  // Rule 3 — Invalidation/Break rules confirmed strictly on candle CLOSE, not wick
   function pruneBrokenOrFarLines(lines) {
     return lines.filter(line => {
       const absDist = Math.abs(line.distancePct);
       if (absDist > 35) return false;
 
-      if (line.type === 'SUPPORT' && currentPrice < line.price * 0.96) {
+      // Support is broken only if the candle CLOSE is below 98% of support floor level
+      if (line.type === 'SUPPORT' && currentPrice < line.price * 0.98) {
         return false;
       }
-      if (line.type === 'RESISTANCE' && currentPrice > line.price * 1.04) {
+      // Resistance is broken only if the candle CLOSE is above 102% of resistance ceiling level
+      if (line.type === 'RESISTANCE' && currentPrice > line.price * 1.02) {
         return false;
       }
 
@@ -249,17 +280,16 @@ export function detectSupportResistance(candles, options = {}) {
     const cleanS = pruneBrokenOrFarLines(pruneRedundantLines(candidateSlantedLines));
     const cleanAll = [...cleanH, ...cleanS];
 
-    supportLines = cleanAll.filter(l => l.type === 'SUPPORT').sort((a, b) => b.bounces - a.bounces).slice(0, 5);
-    resistanceLines = cleanAll.filter(l => l.type === 'RESISTANCE').sort((a, b) => b.bounces - a.bounces).slice(0, 5);
+    supportLines = cleanAll.filter(l => l.type === 'SUPPORT').sort((a, b) => b.strength - a.strength).slice(0, 5);
+    resistanceLines = cleanAll.filter(l => l.type === 'RESISTANCE').sort((a, b) => b.strength - a.strength).slice(0, 5);
   } else if (filterMode === 'standard') {
     const cleanH = pruneRedundantLines(candidateHorizontalLines);
     const cleanS = pruneRedundantLines(candidateSlantedLines);
     const cleanAll = [...cleanH, ...cleanS];
 
-    supportLines = cleanAll.filter(l => l.type === 'SUPPORT').sort((a, b) => b.bounces - a.bounces);
-    resistanceLines = cleanAll.filter(l => l.type === 'RESISTANCE').sort((a, b) => b.bounces - a.bounces);
+    supportLines = cleanAll.filter(l => l.type === 'SUPPORT').sort((a, b) => b.strength - a.strength);
+    resistanceLines = cleanAll.filter(l => l.type === 'RESISTANCE').sort((a, b) => b.strength - a.strength);
   } else {
-    // filterMode === 'all' (Show All Raw Lines)
     const rawAll = [...candidateHorizontalLines, ...candidateSlantedLines];
     supportLines = rawAll.filter(l => l.type === 'SUPPORT').sort((a, b) => b.price - a.price);
     resistanceLines = rawAll.filter(l => l.type === 'RESISTANCE').sort((a, b) => a.price - b.price);
@@ -272,4 +302,19 @@ export function detectSupportResistance(candles, options = {}) {
     slantedLines: [...supportLines, ...resistanceLines].filter(l => l.isSlanted),
     horizontalLines: [...supportLines, ...resistanceLines].filter(l => !l.isSlanted)
   };
+}
+
+/**
+ * Check if price level aligns close to psychological round numbers (multiples of 0.05, 0.10, 0.50, 1.00, etc.)
+ */
+function checkPsychologicalRound(price) {
+  const checkValues = [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100];
+  for (const v of checkValues) {
+    const rem = price % v;
+    const proximity = Math.min(rem, v - rem) / price * 100;
+    if (proximity <= 0.25) { // Within 0.25% distance to round number
+      return true;
+    }
+  }
+  return false;
 }

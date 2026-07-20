@@ -15,6 +15,7 @@ export class AITradePanel {
   constructor(containerElement, options = {}) {
     this.container = containerElement;
     this.isOpen = false;
+    this.isClosed = false;
     this.lkrBudget = 100000;
     this.liveRate = 305.0;
     this.tradeDuration = 'Day Trade (1 - 24h)';
@@ -28,6 +29,7 @@ export class AITradePanel {
 
     this.onApplyAIOverlay = options.onApplyAIOverlay || (() => { });
     this.onResetAIOverlay = options.onResetAIOverlay || (() => { });
+    this.onTogglePanel = options.onTogglePanel || (() => { });
 
     this.initRate();
     this.render();
@@ -52,10 +54,61 @@ export class AITradePanel {
   toggleDrawer() {
     this.isOpen = !this.isOpen;
     this.render();
+    if (this.onTogglePanel) {
+      this.onTogglePanel();
+    }
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 60);
+  }
+
+  closePanel() {
+    this.isClosed = true;
+    this.render();
+    if (this.onTogglePanel) {
+      this.onTogglePanel();
+    }
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 60);
+  }
+
+  openPanel() {
+    this.isClosed = false;
+    this.isOpen = true;
+    this.render();
+    if (this.onTogglePanel) {
+      this.onTogglePanel();
+    }
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 60);
   }
 
   render() {
     if (!this.container) return;
+
+    // Remove existing floating reopen button if any
+    const existingFloat = document.getElementById('reopen-ai-floating-btn');
+    if (existingFloat) existingFloat.remove();
+
+    if (this.isClosed) {
+      this.container.style.display = 'none';
+      
+      // Render floating badge to reopen centered below header
+      const floatBtn = document.createElement('button');
+      floatBtn.type = 'button';
+      floatBtn.id = 'reopen-ai-floating-btn';
+      floatBtn.className = 'reopen-ai-floating-btn';
+      floatBtn.title = 'Re-open AI Trade Advisor';
+      floatBtn.innerHTML = '🤖 Open AI Advisor ▼';
+      floatBtn.addEventListener('click', () => this.openPanel());
+      
+      document.getElementById('app').appendChild(floatBtn);
+      return;
+    }
+
+    this.container.style.display = 'block';
 
     const usdEquiv = (this.lkrBudget / this.liveRate).toFixed(2);
 
@@ -72,6 +125,7 @@ export class AITradePanel {
           <div class="trigger-right">
             <span class="trigger-sub">${this.isOpen ? 'Click to Close Panel' : 'Click to Open AI Trade Calculator & Signals'}</span>
             <span class="drawer-arrow">${this.isOpen ? '▲' : '▼'}</span>
+            <button type="button" class="close-ai-panel-btn" id="close-ai-panel-btn" title="Hide AI Trade Advisor completely">✕</button>
           </div>
         </div>
 
@@ -210,8 +264,15 @@ export class AITradePanel {
 
   attachEvents() {
     const triggerBar = this.container.querySelector('#ai-drawer-trigger');
-    triggerBar?.addEventListener('click', () => {
+    triggerBar?.addEventListener('click', (e) => {
+      if (e.target.closest('#close-ai-panel-btn')) return;
       this.toggleDrawer();
+    });
+
+    const closeBtn = this.container.querySelector('#close-ai-panel-btn');
+    closeBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closePanel();
     });
 
     const budgetInput = this.container.querySelector('#lkr-budget-input');

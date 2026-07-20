@@ -544,6 +544,96 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  transition: width 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+  width: 360px;
+  min-width: 360px;
+}
+
+/* When collapsed: zero out the column so chart fills full width */
+.analytics-container.analytics-panel-collapsed {
+  display: none;
+}
+
+/* Also collapse the grid column when panel is hidden */
+.main-dashboard:has(.analytics-container.analytics-panel-collapsed) {
+  grid-template-columns: 50px 1fr;
+}
+
+/* Floating reopen tab — pinned to right edge, slides in from right */
+.reopen-analytics-floating-btn {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 999;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-right: none;
+  backdrop-filter: blur(10px);
+  color: var(--accent-blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 14px 10px;
+  border-radius: 10px 0 0 10px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+  animation: slideInFromRight 0.3s ease;
+}
+
+.reopen-analytics-floating-btn:hover {
+  background: rgba(59, 130, 246, 0.28);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: -6px 0 24px rgba(59, 130, 246, 0.25);
+  transform: translateY(-50%) translateX(-3px);
+}
+
+@keyframes slideInFromRight {
+  from { transform: translateY(-50%) translateX(100%); opacity: 0; }
+  to   { transform: translateY(-50%) translateX(0);    opacity: 1; }
+}
+
+
+
+/* Analytics Panel Header Bar */
+.analytics-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 12px 0;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.analytics-header-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.close-analytics-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: var(--accent-blue);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.close-analytics-btn:hover {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateX(2px);
 }
 
 .panel-card {
@@ -912,6 +1002,66 @@ html, body {
 .drawer-arrow {
   font-size: 0.8rem;
   color: var(--accent-blue);
+}
+
+/* ✕ Close / Hide AI Panel Button */
+.close-ai-panel-btn {
+  background: rgba(255, 80, 80, 0.12);
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  color: rgba(255, 120, 120, 0.9);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  flex-shrink: 0;
+}
+
+.close-ai-panel-btn:hover {
+  background: rgba(255, 60, 60, 0.28);
+  border-color: rgba(255, 60, 60, 0.6);
+  color: #ff6b6b;
+  transform: scale(1.08);
+}
+
+/* Floating reopen badge */
+.reopen-ai-floating-btn {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  backdrop-filter: blur(10px);
+  color: var(--accent-blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 18px;
+  border-radius: 0 0 12px 12px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  animation: slideDownBadge 0.3s ease;
+}
+
+.reopen-ai-floating-btn:hover {
+  background: rgba(59, 130, 246, 0.28);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.25);
+  transform: translateX(-50%) translateY(2px);
+}
+
+@keyframes slideDownBadge {
+  from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
 }
 
 /* Drawer Content Dropdown Animation */
@@ -2229,3 +2379,270 @@ html, body {
 .admin-sub { font-size: 0.8rem; color: var(--text-muted); }
 .user-email-cell { font-family: monospace; font-size: 0.85rem; font-weight: 600; }
 .role-select { padding: 4px 8px; font-size: 0.8rem; }
+
+/* Analytics Panel Tabs System */
+.analytics-tabs-bar {
+  display: flex;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 3px;
+  margin-bottom: 12px;
+  gap: 4px;
+}
+
+.analytics-tab-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.analytics-tab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.analytics-tab-btn.active {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  box-shadow: 0 0 10px var(--accent-blue-glow);
+}
+
+/* Automated Technical Pattern Section */
+.pattern-section {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.pattern-section:last-child {
+  border-bottom: none;
+}
+
+.section-subtitle {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-empty {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* Pattern Chips Grid */
+.pattern-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.pattern-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: transform 0.2s;
+}
+
+.pattern-chip:hover {
+  transform: translateY(-1px);
+}
+
+.pattern-chip.chip-bullish {
+  border-color: rgba(0, 230, 118, 0.35);
+  background: rgba(0, 230, 118, 0.05);
+}
+
+.pattern-chip.chip-bearish {
+  border-color: rgba(255, 23, 68, 0.35);
+  background: rgba(255, 23, 68, 0.05);
+}
+
+.chip-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.chip-type {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.chip-bullish .chip-type { color: var(--support-green); }
+.chip-bearish .chip-type { color: var(--resistance-red); }
+
+.chip-price {
+  font-family: monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* Market Structure List */
+.structure-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.structure-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+
+.item-bos { border-left-color: var(--accent-blue); }
+.item-choch { border-left-color: #f59e0b; }
+.item-fvg { border-left-color: #a855f7; }
+.item-ob { border-left-color: #3b82f6; }
+
+.tag-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.tag-green { background: rgba(0, 230, 118, 0.15); color: var(--support-green); }
+.tag-red { background: rgba(255, 23, 68, 0.15); color: var(--resistance-red); }
+.tag-amber { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.tag-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+.tag-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+
+.item-text {
+  font-family: monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.item-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* Indicators & Fib Golden Pocket Grid */
+.indicators-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ind-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.ind-active-gold {
+  border-color: rgba(234, 179, 8, 0.5);
+  background: rgba(234, 179, 8, 0.06);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.15);
+}
+
+.ind-lbl {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.ind-val {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.ind-sub {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* Alert Boxes */
+.divergence-alert-box {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  margin-top: 8px;
+  border-left: 4px solid;
+}
+
+.alert-bullish {
+  background: rgba(0, 230, 118, 0.08);
+  border-left-color: var(--support-green);
+  color: #a7f3d0;
+}
+
+.alert-bearish {
+  background: rgba(255, 23, 68, 0.08);
+  border-left-color: var(--resistance-red);
+  color: #fecaca;
+}
+
+.alert-chart-pattern {
+  background: rgba(59, 130, 246, 0.08);
+  border-left-color: var(--accent-blue);
+  color: #bfdbfe;
+}
+
+/* Beautiful Floating Chart Hover Tooltip */
+.chart-hover-tooltip {
+  width: 220px;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  transition: opacity 0.15s ease;
+}
+
+.tooltip-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--accent-blue);
+  margin-bottom: 6px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  padding-bottom: 4px;
+}
+
+.tooltip-desc {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-main);
+}
+

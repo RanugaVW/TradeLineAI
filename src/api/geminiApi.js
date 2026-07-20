@@ -53,11 +53,23 @@ export async function getLiveUsdToLkr() {
 }
 
 export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 100000, tradeDuration = 'Day Trade (1 - 24h)') {
-  const { symbol, currentPrice, supportLines = [], resistanceLines = [] } = marketContext;
+  const { 
+    symbol, 
+    currentPrice, 
+    supportLines = [], 
+    resistanceLines = [],
+    patterns = null
+  } = marketContext;
   
   // Dynamic Live USD/LKR Exchange Rate
   const usdToLkr = await getLiveUsdToLkr();
   const usdBudget = lkrBudget / usdToLkr;
+
+  const detectedCandles = patterns?.candlestickPatterns?.map(p => `${p.name} (${p.type})`).join(', ') || 'None';
+  const detectedBos = patterns?.marketStructure?.bosEvents?.map(b => b.type).join(', ') || 'None';
+  const detectedFvg = patterns?.marketStructure?.fvgGaps?.map(f => f.type).join(', ') || 'None';
+  const rsiVal = patterns?.indicators?.rsi || 50;
+  const fibGp = patterns?.fibonacci?.goldenPocket?.isActive ? 'ACTIVE IN GOLDEN POCKET (0.618 - 0.65)' : 'Standard Zone';
 
   let apiKey = '';
   try {
@@ -76,13 +88,20 @@ Current Crypto Symbol: ${symbol}
 Current Price: $${currentPrice} USD
 Trader Investment Budget: LKR ${lkrBudget.toLocaleString()} (approx $${usdBudget.toFixed(2)} USD at 1 USD = ${usdToLkr.toFixed(2)} LKR)
 Trader Target Time Horizon: ${tradeDuration}
+
+--- AUTOMATED QUANTITATIVE PATTERN ENGINE READOUT ---
 Detected Key Support Floors: ${supportLines.map(s => `$${s.price.toFixed(4)} (${s.bounces}x bounces)`).join(', ') || 'None'}
 Detected Key Resistance Ceilings: ${resistanceLines.map(r => `$${r.price.toFixed(4)} (${r.bounces}x bounces)`).join(', ') || 'None'}
+Detected Active Candlestick Patterns: ${detectedCandles}
+Detected Market Structure Shifts (BOS/CHoCH): ${detectedBos}
+Detected Fair Value Gap (FVG) Imbalances: ${detectedFvg}
+RSI (14) Momentum Level: ${rsiVal}
+Fibonacci Retracement Status: ${fibGp}
 
 Analyze the chart setup specifically tailored to the trader's ${tradeDuration} horizon and output a strict JSON object with:
 1. "signal": "BUY" or "STRONG BUY" or "SELL" or "STRONG SELL" or "HOLD"
 2. "confidence": number from 50 to 95 (percentage)
-3. "analysis": detailed 2-3 sentence market reasoning explaining why based on S/R levels and the target time horizon.
+3. "analysis": detailed 2-3 sentence market reasoning explaining why based on candlestick patterns, BOS/CHoCH structure, S/R levels, and target horizon.
 4. "entryPrice": suggested optimal entry price in USD.
 5. "takeProfitPrice": suggested target price in USD tailored for ${tradeDuration}.
 6. "stopLossPrice": suggested stop loss price in USD tailored for ${tradeDuration}.

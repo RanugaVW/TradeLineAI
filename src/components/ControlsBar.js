@@ -78,30 +78,15 @@ export class ControlsBar {
               <span class="info-icon" title="Select preset timeframe or enter custom dynamic interval (Minutes, Hours, Days, Months, Years)">ⓘ</span>
             </label>
 
-            <div class="tf-composite-wrapper">
-              <div class="pill-buttons">
-                ${TIMEFRAMES.map(tf => `
-                  <button 
-                    type="button"
-                    class="pill-btn ${tf.label === this.state.timeframe ? 'active' : ''}" 
-                    data-tf="${tf.label}">
-                    ${tf.label}
-                  </button>
-                `).join('')}
-              </div>
-
-              <!-- Custom Dynamic Timeframe Input Group -->
-              <div class="custom-tf-inline-group" title="Enter custom timeframe interval (e.g. 2H, 3D, 1M, 1Y)">
-                <input type="number" id="custom-tf-num" class="custom-tf-num-input" value="2" min="1" max="999" placeholder="2" />
-                <select id="custom-tf-unit" class="custom-tf-unit-select">
-                  <option value="m">Minute(s)</option>
-                  <option value="h" selected>Hour(s)</option>
-                  <option value="d">Day(s)</option>
-                  <option value="mth">Month(s)</option>
-                  <option value="y">Year(s)</option>
-                </select>
-                <button type="button" id="apply-custom-tf-btn" class="custom-tf-apply-btn" title="Apply custom timeframe to chart">Apply</button>
-              </div>
+            <div class="pill-buttons">
+              ${TIMEFRAMES.map(tf => `
+                <button 
+                  type="button"
+                  class="pill-btn ${tf.label === this.state.timeframe ? 'active' : ''}" 
+                  data-tf="${tf.label}">
+                  ${tf.label}
+                </button>
+              `).join('')}
             </div>
           </div>
 
@@ -175,7 +160,7 @@ export class ControlsBar {
               </label>
               <select id="filter-mode-select" class="custom-select mini-select">
                 <option value="smart" ${(this.state.filterMode || 'smart') === 'smart' ? 'selected' : ''}>✨ Smart Pruned (Clean Top 5)</option>
-                <option value="standard" ${this.state.filterMode === 'standard' ? 'selected' : ''}> Standard (All 3+ Bounces)</option>
+                <option value="standard" ${this.state.filterMode === 'standard' ? 'selected' : ''}>📊 Standard (All 3+ Bounces)</option>
                 <option value="all" ${this.state.filterMode === 'all' ? 'selected' : ''}>🔍 Show All Raw Lines</option>
               </select>
             </div>
@@ -246,29 +231,7 @@ export class ControlsBar {
       });
     });
 
-    // Custom dynamic timeframe apply button
-    const applyCustomTfBtn = this.container.querySelector('#apply-custom-tf-btn');
-    const customNumInput = this.container.querySelector('#custom-tf-num');
-    const customUnitSelect = this.container.querySelector('#custom-tf-unit');
 
-    applyCustomTfBtn?.addEventListener('click', (e) => {
-      e.preventDefault();
-      const val = parseInt(customNumInput.value, 10) || 1;
-      const unit = customUnitSelect.value;
-      let label = `${val}${unit.toUpperCase()}`;
-      if (unit === 'm') label = `${val}m`;
-      if (unit === 'h') label = `${val}H`;
-      if (unit === 'd') label = `${val}D`;
-      if (unit === 'mth') label = `${val}M`;
-      if (unit === 'y') label = `${val}Y`;
-
-      this.state.timeframe = label;
-      tfButtons.forEach(b => b.classList.remove('active'));
-      const currentTfBadge = this.container.querySelector('#current-tf-badge');
-      if (currentTfBadge) currentTfBadge.textContent = label;
-
-      this.onChange(this.state);
-    });
 
     // Min bounces select
     const bounceSelect = this.container.querySelector('#min-bounces-select');

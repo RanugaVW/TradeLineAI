@@ -1,5 +1,6 @@
 import { getMarketCandles } from './api/cryptoApi.js';
 import { detectSupportResistance } from './analysis/srDetector.js';
+import { detectAllPatterns } from './analysis/patternEngine.js';
 import { ChartViewer } from './components/ChartViewer.js';
 import { ControlsBar } from './components/ControlsBar.js';
 import { AnalyticsPanel } from './components/AnalyticsPanel.js';
@@ -42,15 +43,48 @@ class App {
 
     this.analyticsPanel = new AnalyticsPanel(analyticsElem, {
       onLineClick: (line) => this.chartViewer.focusLine(line),
-      onTogglePanel: () => {
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+      onTogglePanel: (isCollapsed) => {
+        // JS fallback: directly set grid columns so chart fills full width
+        const dashboard = document.getElementById('main-dashboard');
+        if (dashboard) {
+          dashboard.style.gridTemplateColumns = isCollapsed
+            ? '50px 1fr'
+            : '50px 1fr 360px';
+        }
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+          if (this.chartViewer && this.chartViewer.chart) {
+            const container = document.querySelector('.chart-container');
+            if (container) {
+              this.chartViewer.chart.resize(
+                container.clientWidth,
+                container.clientHeight
+              );
+            }
+          }
+        }, 80);
       }
     });
     
     // Initialize AI Trade Advisor Panel
     this.aiTradePanel = new AITradePanel(aiTradeElem, {
       onApplyAIOverlay: (aiData) => this.chartViewer.renderAITradeOverlay(aiData),
-      onResetAIOverlay: () => this.chartViewer.clearAITradeOverlay()
+      onResetAIOverlay: () => this.chartViewer.clearAITradeOverlay(),
+      onTogglePanel: () => {
+        // Give the DOM time to update then ask the chart to resize to fill new space
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+          if (this.chartViewer && this.chartViewer.chart) {
+            const container = document.querySelector('.chart-container');
+            if (container) {
+              this.chartViewer.chart.resize(
+                container.clientWidth,
+                container.clientHeight
+              );
+            }
+          }
+        }, 80);
+      }
     });
 
     // 2. Initialize Admin Panel Modal
@@ -270,12 +304,15 @@ class App {
 
       // Filter candles strictly within user-selected Date-Time Range if specified
       let periodCandles = candles;
+      let startSec = 0;
+      let endSec = Infinity;
+
       if (startDate || endDate) {
-        const startSec = startDate ? Math.floor(new Date(startDate).getTime() / 1000) : 0;
-        const endSec = endDate ? Math.floor(new Date(endDate).getTime() / 1000) : Infinity;
+        startSec = startDate ? Math.floor(new Date(startDate).getTime() / 1000) : 0;
+        endSec = endDate ? Math.floor(new Date(endDate).getTime() / 1000) : Infinity;
 
         const filtered = candles.filter(c => c.time >= startSec && c.time <= endSec);
-        if (filtered.length >= 5) {
+        if (filtered.length >= 3) {
           periodCandles = filtered;
         }
       }
@@ -288,14 +325,22 @@ class App {
       });
       this.currentAnalysis = analysis;
 
+      // Run Automated Technical Pattern Recognition Engine A-Z
+      const patterns = detectAllPatterns(periodCandles);
+
       // Update Chart View preserving user zoom/scroll position unless explicitly reset
       this.chartViewer.setData(candles, resetView);
       this.chartViewer.renderSRLines({
         supportLines: analysis.supportLines,
         resistanceLines: analysis.resistanceLines,
         showSupport,
-        showResistance
+        showResistance,
+        rangeStartSec: startSec > 0 ? startSec : null,
+        rangeEndSec: endSec !== Infinity ? endSec : null
       });
+
+      // Render Candlestick patterns, BOS, and Golden Pocket lines
+      this.chartViewer.renderPatternOverlays(patterns);
 
       // Load user cloud drawings for this symbol
       await this.loadSavedAnnotations();
@@ -307,7 +352,8 @@ class App {
         source,
         supportLines: analysis.supportLines,
         resistanceLines: analysis.resistanceLines,
-        candleCount: candles.length
+        candleCount: candles.length,
+        patterns
       });
 
       // Pass live market context & candles to AI Trade Advisor Panel
@@ -316,7 +362,8 @@ class App {
         currentPrice,
         candles,
         supportLines: analysis.supportLines,
-        resistanceLines: analysis.resistanceLines
+        resistanceLines: analysis.resistanceLines,
+        patterns
       });
 
     } catch (error) {
