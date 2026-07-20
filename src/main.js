@@ -43,6 +43,7 @@ class App {
 
     this.analyticsPanel = new AnalyticsPanel(analyticsElem, {
       onLineClick: (line) => this.chartViewer.focusLine(line),
+      onPatternClick: (pat) => this.chartViewer.focusPattern(pat),
       onTogglePanel: (isCollapsed) => {
         // JS fallback: directly set grid columns so chart fills full width
         const dashboard = document.getElementById('main-dashboard');

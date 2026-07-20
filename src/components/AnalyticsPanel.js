@@ -195,8 +195,8 @@ export class AnalyticsPanel {
               <p class="section-empty">Scanning for 1-candle, 2-candle, and 3-candle reversal setups...</p>
             ` : `
               <div class="pattern-badges-grid">
-                ${cPatterns.map(p => `
-                  <div class="pattern-chip chip-${p.type.toLowerCase()}" title="${p.desc}">
+                ${cPatterns.map((p, idx) => `
+                  <div class="pattern-chip chip-${p.type.toLowerCase()} clickable-pattern-chip" data-type="candle" data-index="${idx}" title="Click to focus on this pattern directly on the chart!" style="cursor:pointer;">
                     <span class="chip-title">${p.name}</span>
                     <span class="chip-type">${p.type} (${p.confidence}%)</span>
                     <span class="chip-status badge-${p.status || 'confirmed'}">${p.status || 'confirmed'}</span>
@@ -211,32 +211,32 @@ export class AnalyticsPanel {
           <div class="pattern-section">
             <h5 class="section-subtitle">🏛️ Market Structure & Smart Money</h5>
             <div class="structure-list">
-              ${(mStructure.bosEvents || []).map(b => `
-                <div class="structure-item item-bos">
+              ${(mStructure.bosEvents || []).map((b, idx) => `
+                <div class="structure-item item-bos clickable-pattern-chip" data-type="bos" data-index="${idx}" style="cursor:pointer;" title="Click to focus on this BOS event!">
                   <span class="tag-badge tag-${b.type.includes('BULL') ? 'green' : 'red'}">${b.type}</span>
                   <span class="item-text">$${b.price.toFixed(4)}</span>
                   <small class="item-desc">${b.desc}</small>
                 </div>
               `).join('')}
 
-              ${(mStructure.chochEvents || []).map(c => `
-                <div class="structure-item item-choch">
+              ${(mStructure.chochEvents || []).map((c, idx) => `
+                <div class="structure-item item-choch clickable-pattern-chip" data-type="choch" data-index="${idx}" style="cursor:pointer;" title="Click to focus on this CHoCH event!">
                   <span class="tag-badge tag-amber">${c.type}</span>
                   <span class="item-text">$${c.price.toFixed(4)}</span>
                   <small class="item-desc">${c.desc}</small>
                 </div>
               `).join('')}
 
-              ${(mStructure.fvgGaps || []).map(g => `
-                <div class="structure-item item-fvg">
+              ${(mStructure.fvgGaps || []).map((g, idx) => `
+                <div class="structure-item item-fvg clickable-pattern-chip" data-type="fvg" data-index="${idx}" style="cursor:pointer;" title="Click to focus on this FVG gap!">
                   <span class="tag-badge tag-purple">${g.type}</span>
                   <span class="item-text">$${g.low.toFixed(4)} - $${g.high.toFixed(4)}</span>
                   <small class="item-desc">${g.desc}</small>
                 </div>
               `).join('')}
 
-              ${(mStructure.orderBlocks || []).map(ob => `
-                <div class="structure-item item-ob">
+              ${(mStructure.orderBlocks || []).map((ob, idx) => `
+                <div class="structure-item item-ob clickable-pattern-chip" data-type="ob" data-index="${idx}" style="cursor:pointer;" title="Click to focus on this Order Block!">
                   <span class="tag-badge tag-blue">${ob.type}</span>
                   <span class="item-text">$${ob.low.toFixed(4)} - $${ob.high.toFixed(4)}</span>
                 </div>
@@ -286,12 +286,49 @@ export class AnalyticsPanel {
               </div>
             `).join('')}
 
-            ${chartPats.map(cp => `
-              <div class="divergence-alert-box alert-chart-pattern">
-                <strong>📐 ${cp.name}</strong>
-                <p>${cp.desc}</p>
-              </div>
-            `).join('')}
+            <!-- Section D: Detected Chart Patterns (Double Top/Bottom, H&S, Wedges, Triangles, Rectangles) -->
+            <div class="pattern-section" style="margin-top: 16px;">
+              <h5 class="section-subtitle">📐 Detected Chart Patterns</h5>
+              ${chartPats.length === 0 ? `
+                <p class="section-empty">No active geometric chart patterns detected in the selected time period.</p>
+              ` : `
+                <div class="structure-list">
+                  ${chartPats.map((cp, idx) => {
+                    const isBull = cp.type === 'BULLISH';
+                    return `
+                      <div class="divergence-alert-box alert-chart-pattern clickable-pattern-chip" 
+                           data-type="chartpat" 
+                           data-index="${idx}" 
+                           style="cursor:pointer; border-left: 4px solid ${isBull ? '#00e676' : '#ff1744'}; background: rgba(255,255,255,0.02); padding: 10px; margin-bottom: 8px; border-radius: 6px;" 
+                           title="Click to focus on this chart pattern!">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                          <strong style="color: ${isBull ? '#00e676' : '#ff1744'}; font-size: 11px;">📐 ${cp.name}</strong>
+                          <span class="type-badge ${isBull ? 'badge-sup' : 'badge-res'}" style="font-size: 8px;">
+                            ${cp.type} (${Math.round(cp.confidence * 100)}%)
+                          </span>
+                        </div>
+                        <p style="font-size: 10px; color: var(--text-secondary); margin: 4px 0 6px;">${cp.desc}</p>
+                        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 4px; font-size: 9px; text-align:center;">
+                          <div style="background:rgba(255,255,255,0.03); padding: 3px; border-radius:3px;">
+                            <span style="color:var(--text-muted); display:block; font-size:8px;">ENTRY</span>
+                            <span style="font-weight:600; color:#fff;">$${cp.entry ? cp.entry.toFixed(4) : '—'}</span>
+                          </div>
+                          <div style="background:rgba(255,255,255,0.03); padding: 3px; border-radius:3px;">
+                            <span style="color:var(--text-muted); display:block; font-size:8px;">STOP</span>
+                            <span style="font-weight:600; color:#ff9800;">$${cp.stop ? cp.stop.toFixed(4) : '—'}</span>
+                          </div>
+                          <div style="background:rgba(255,255,255,0.03); padding: 3px; border-radius:3px;">
+                            <span style="color:var(--text-muted); display:block; font-size:8px;">TARGET</span>
+                            <span style="font-weight:600; color:#2196f3;">$${cp.profit ? cp.profit.toFixed(4) : '—'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `}
+            </div>
+
           </div>
         </div>
       ` : ''}
@@ -323,6 +360,31 @@ export class AnalyticsPanel {
         const idx = parseInt(row.getAttribute('data-line-index'), 10);
         if (!isNaN(idx) && allLines[idx]) {
           this.onLineClick(allLines[idx]);
+        }
+      });
+    });
+
+    const patChips = this.container.querySelectorAll('.clickable-pattern-chip');
+    patChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const type = chip.getAttribute('data-type');
+        const idx = parseInt(chip.getAttribute('data-index'), 10);
+        if (isNaN(idx)) return;
+
+        const cPatterns = this.data.patterns?.candlestickPatterns || [];
+        const mStructure = this.data.patterns?.marketStructure || {};
+        const chartPats = this.data.patterns?.chartPatterns || [];
+
+        let targetPattern = null;
+        if (type === 'candle') targetPattern = cPatterns[idx];
+        else if (type === 'bos') targetPattern = mStructure.bosEvents?.[idx];
+        else if (type === 'choch') targetPattern = mStructure.chochEvents?.[idx];
+        else if (type === 'fvg') targetPattern = mStructure.fvgGaps?.[idx];
+        else if (type === 'ob') targetPattern = mStructure.orderBlocks?.[idx];
+        else if (type === 'chartpat') targetPattern = chartPats[idx];
+
+        if (targetPattern) {
+          this.onPatternClick(targetPattern);
         }
       });
     });

@@ -470,6 +470,66 @@ export class ChartViewer {
       this.patternPriceLines.push(gpLine);
     }
 
+    // Render Geometric Chart Patterns (Double Top/Bottom, H&S, Wedges, Triangles, Rectangles, Pennants)
+    (patterns.chartPatterns || []).forEach(cp => {
+      const isBull = cp.type === 'BULLISH';
+      const patColor = isBull ? '#00e676' : '#ff1744';
+
+      // Entry Price Line
+      if (cp.entry) {
+        const entryLine = this.candlestickSeries.createPriceLine({
+          price: cp.entry,
+          color: patColor,
+          lineWidth: 2,
+          lineStyle: 2, // Dashed
+          axisLabelVisible: false,
+          title: `🔑 ${cp.name} ENTRY ($${cp.entry.toFixed(4)})`
+        });
+        this.patternPriceLines.push(entryLine);
+      }
+
+      // Stop Loss Price Line
+      if (cp.stop) {
+        const stopLine = this.candlestickSeries.createPriceLine({
+          price: cp.stop,
+          color: '#ff9800',
+          lineWidth: 1.5,
+          lineStyle: 3, // Dotted
+          axisLabelVisible: false,
+          title: `🛑 ${cp.name} STOP ($${cp.stop.toFixed(4)})`
+        });
+        this.patternPriceLines.push(stopLine);
+      }
+
+      // Take Profit Price Line
+      if (cp.profit) {
+        const profitLine = this.candlestickSeries.createPriceLine({
+          price: cp.profit,
+          color: '#2196f3',
+          lineWidth: 2,
+          lineStyle: 2, // Dashed
+          axisLabelVisible: false,
+          title: `🚀 ${cp.name} TARGET TP ($${cp.profit.toFixed(4)})`
+        });
+        this.patternPriceLines.push(profitLine);
+      }
+
+      // Add a pattern marker on the latest pivot/candle
+      const markTime = cp.points && cp.points.length > 0
+        ? cp.points[cp.points.length - 1].time
+        : (this.currentCandles.length > 0 ? this.currentCandles[this.currentCandles.length - 1].time : null);
+
+      if (markTime) {
+        extraMarkers.push({
+          time: markTime,
+          position: isBull ? 'belowBar' : 'aboveBar',
+          color: patColor,
+          shape: isBull ? 'arrowUp' : 'arrowDown',
+          text: `📊 ${cp.name}`
+        });
+      }
+    });
+
     this.currentPatternMarkers = extraMarkers;
     this.combineAndSetMarkers();
   }
@@ -517,6 +577,44 @@ export class ChartViewer {
         text: `🎯 FOCUS: ${targetLine.type} ($${targetLine.price.toFixed(4)})`
       };
       this.candlestickSeries.setMarkers([focusMarker]);
+    }
+  }
+
+  focusPattern(pattern) {
+    if (!pattern || !this.chart || !this.candlestickSeries || !this.currentCandles || this.currentCandles.length === 0) return;
+
+    // Use pivot start/end point times, or falling/rising window/candle index times
+    let targetTime = null;
+    if (pattern.points && pattern.points.length > 0) {
+      targetTime = pattern.points[0].time;
+    } else if (pattern.time) {
+      targetTime = pattern.time;
+    }
+
+    if (!targetTime) return;
+
+    const candleIndex = this.currentCandles.findIndex(c => c.time === targetTime);
+    if (candleIndex !== -1) {
+      const fromIdx = Math.max(0, candleIndex - 12);
+      const toIdx = Math.min(this.currentCandles.length - 1 + 10, candleIndex + 30);
+      try {
+        this.chart.timeScale().setVisibleLogicalRange({
+          from: fromIdx,
+          to: toIdx
+        });
+
+        // Set visual focus marker
+        const focusMarker = {
+          time: targetTime,
+          position: pattern.type === 'BULLISH' ? 'belowBar' : 'aboveBar',
+          color: pattern.type === 'BULLISH' ? '#00e676' : '#ff1744',
+          shape: 'arrowRight',
+          text: `🎯 PATTERN FOCUS: ${pattern.name}`
+        };
+        this.candlestickSeries.setMarkers([focusMarker]);
+      } catch (e) {
+        console.warn('TimeScale pattern focus warning:', e);
+      }
     }
   }
 

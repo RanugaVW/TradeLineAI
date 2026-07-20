@@ -1125,43 +1125,304 @@ function calculateFibonacciLevels(candles, pivots = []) {
 }
 
 /**
- * 6. CHART REVERSAL PATTERNS (Double Top / Double Bottom)
+ * 6. Automated Chart Pattern Detection & Drawing System (A-Z Implementation)
+ * Covers Reversal, Continuation, and Bilateral chart patterns with
+ * entry, stop loss, take profit targets, and confidence scoring.
  */
 function detectChartPatterns(candles, pivots = []) {
   const patterns = [];
-  const highs = pivots.filter(p => p.type === 'HIGH');
-  const lows = pivots.filter(p => p.type === 'LOW');
+  const len = candles.length;
+  if (len < 15 || pivots.length < 3) return [];
 
-  // Double Top (2 peak highs within 1.5% distance)
+  const highs = pivots.filter(p => p.type === 'HIGH').sort((a, b) => a.index - b.index);
+  const lows = pivots.filter(p => p.type === 'LOW').sort((a, b) => a.index - b.index);
+
+  const tolerance = 0.02; // 2% tolerance for horizontal flat levels
+
+  // Prior Trend context helper: uptrend if higher highs, downtrend if lower lows
+  let priorTrend = 'NEUTRAL';
+  if (highs.length >= 2 && lows.length >= 2) {
+    const lastH1 = highs[highs.length - 2].price;
+    const lastH2 = highs[highs.length - 1].price;
+    const lastL1 = lows[lows.length - 2].price;
+    const lastL2 = lows[lows.length - 1].price;
+    if (lastH2 > lastH1 && lastL2 > lastL1) priorTrend = 'UPTREND';
+    else if (lastH2 < lastH1 && lastL2 < lastL1) priorTrend = 'DOWNTREND';
+  }
+
+  // Helper for linear regression slope estimation
+  function getSlope(points) {
+    if (points.length < 2) return 0;
+    const n = points.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    for (let i = 0; i < n; i++) {
+      sumX += i;
+      sumY += points[i].price;
+      sumXY += i * points[i].price;
+      sumXX += i * i;
+    }
+    return (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  }
+
+  // A. REVERSAL PATTERNS
+  // 1. Double Top
   if (highs.length >= 2) {
     const p1 = highs[highs.length - 2];
     const p2 = highs[highs.length - 1];
-    const diffPct = (Math.abs(p1.price - p2.price) / p1.price) * 100;
+    const diffPct = Math.abs(p1.price - p2.price) / p1.price;
+    if (diffPct <= tolerance) {
+      // Find neckline (lowest point between the two peaks)
+      const intermediateLows = lows.filter(l => l.index > p1.index && l.index < p2.index);
+      if (intermediateLows.length > 0) {
+        const neckline = Math.min(...intermediateLows.map(l => l.price));
+        const height = Math.max(p1.price, p2.price) - neckline;
+        patterns.push({
+          name: 'Double Top Reversal',
+          type: 'BEARISH',
+          points: [p1, p2],
+          neckline,
+          entry: neckline,
+          stop: Math.max(p1.price, p2.price) * 1.01,
+          profit: neckline - height,
+          confidence: 0.85,
+          desc: `Bearish Double Top at $${p2.price.toFixed(4)}. Neckline: $${neckline.toFixed(4)}. Height: $${height.toFixed(4)}.`
+        });
+      }
+    }
+  }
 
-    if (diffPct <= 1.5) {
+  // 2. Double Bottom
+  if (lows.length >= 2) {
+    const p1 = lows[lows.length - 2];
+    const p2 = lows[lows.length - 1];
+    const diffPct = Math.abs(p1.price - p2.price) / p1.price;
+    if (diffPct <= tolerance) {
+      // Find neckline (highest point between the two troughs)
+      const intermediateHighs = highs.filter(h => h.index > p1.index && h.index < p2.index);
+      if (intermediateHighs.length > 0) {
+        const neckline = Math.max(...intermediateHighs.map(h => h.price));
+        const height = neckline - Math.min(p1.price, p2.price);
+        patterns.push({
+          name: 'Double Bottom Reversal',
+          type: 'BULLISH',
+          points: [p1, p2],
+          neckline,
+          entry: neckline,
+          stop: Math.min(p1.price, p2.price) * 0.99,
+          profit: neckline + height,
+          confidence: 0.85,
+          desc: `Bullish Double Bottom at $${p2.price.toFixed(4)}. Neckline: $${neckline.toFixed(4)}. Height: $${height.toFixed(4)}.`
+        });
+      }
+    }
+  }
+
+  // 3. Head & Shoulders
+  if (highs.length >= 3) {
+    const ls = highs[highs.length - 3];
+    const h = highs[highs.length - 2];
+    const rs = highs[highs.length - 1];
+    if (h.price > ls.price && h.price > rs.price) {
+      const shoulderDiff = Math.abs(ls.price - rs.price) / ls.price;
+      if (shoulderDiff <= 0.05) {
+        const intermediateLows = lows.filter(l => l.index > ls.index && l.index < rs.index);
+        if (intermediateLows.length >= 2) {
+          const neckline = Math.min(...intermediateLows.map(l => l.price));
+          const height = h.price - neckline;
+          patterns.push({
+            name: 'Head & Shoulders Reversal',
+            type: 'BEARISH',
+            points: [ls, h, rs],
+            neckline,
+            entry: neckline,
+            stop: rs.price * 1.015,
+            profit: neckline - height,
+            confidence: 0.88,
+            desc: `Bearish Head & Shoulders. Head: $${h.price.toFixed(4)}, Shoulders: $${ls.price.toFixed(4)} / $${rs.price.toFixed(4)}.`
+          });
+        }
+      }
+    }
+  }
+
+  // 4. Inverse Head & Shoulders
+  if (lows.length >= 3) {
+    const ls = lows[lows.length - 3];
+    const h = lows[lows.length - 2];
+    const rs = lows[lows.length - 1];
+    if (h.price < ls.price && h.price < rs.price) {
+      const shoulderDiff = Math.abs(ls.price - rs.price) / ls.price;
+      if (shoulderDiff <= 0.05) {
+        const intermediateHighs = highs.filter(hi => hi.index > ls.index && hi.index < rs.index);
+        if (intermediateHighs.length >= 2) {
+          const neckline = Math.max(...intermediateHighs.map(hi => hi.price));
+          const height = neckline - h.price;
+          patterns.push({
+            name: 'Inverse Head & Shoulders',
+            type: 'BULLISH',
+            points: [ls, h, rs],
+            neckline,
+            entry: neckline,
+            stop: rs.price * 0.985,
+            profit: neckline + height,
+            confidence: 0.88,
+            desc: `Bullish Inverse Head & Shoulders. Head: $${h.price.toFixed(4)}, Shoulders: $${ls.price.toFixed(4)} / $${rs.price.toFixed(4)}.`
+          });
+        }
+      }
+    }
+  }
+
+  // B. CONTINUATION & BILATERAL PATTERNS
+  // 5. Wedges (Rising and Falling)
+  if (highs.length >= 3 && lows.length >= 3) {
+    const recentHighs = highs.slice(-3);
+    const recentLows = lows.slice(-3);
+    const highSlope = getSlope(recentHighs);
+    const lowSlope = getSlope(recentLows);
+
+    // Rising Wedge: both slopes positive, high slope < low slope (converging upward)
+    if (highSlope > 0 && lowSlope > 0 && highSlope < lowSlope) {
+      const isReversal = priorTrend === 'UPTREND';
+      const lastHigh = recentHighs[2].price;
+      const lastLow = recentLows[2].price;
+      const height = lastHigh - lastLow;
       patterns.push({
-        name: 'Double Top Reversal',
+        name: isReversal ? 'Rising Wedge (Reversal)' : 'Rising Wedge (Continuation)',
         type: 'BEARISH',
-        price1: p1.price,
-        price2: p2.price,
-        desc: `Bearish Double Top at $${p2.price.toFixed(4)} (${diffPct.toFixed(2)}% peak symmetry).`
+        points: [...recentHighs, ...recentLows],
+        entry: lastLow,
+        stop: lastHigh,
+        profit: lastLow - height,
+        confidence: 0.75,
+        desc: `Bearish Rising Wedge (${isReversal ? 'Reversal' : 'Continuation'}). Converging upward.`
+      });
+    }
+    // Falling Wedge: both slopes negative, high slope > low slope (converging downward)
+    else if (highSlope < 0 && lowSlope < 0 && highSlope > lowSlope) {
+      const isReversal = priorTrend === 'DOWNTREND';
+      const lastHigh = recentHighs[2].price;
+      const lastLow = recentLows[2].price;
+      const height = lastHigh - lastLow;
+      patterns.push({
+        name: isReversal ? 'Falling Wedge (Reversal)' : 'Falling Wedge (Continuation)',
+        type: 'BULLISH',
+        points: [...recentHighs, ...recentLows],
+        entry: lastHigh,
+        stop: lastLow,
+        profit: lastHigh + height,
+        confidence: 0.75,
+        desc: `Bullish Falling Wedge (${isReversal ? 'Reversal' : 'Continuation'}). Converging downward.`
       });
     }
   }
 
-  // Double Bottom (2 trough lows within 1.5% distance)
-  if (lows.length >= 2) {
-    const p1 = lows[lows.length - 2];
-    const p2 = lows[lows.length - 1];
-    const diffPct = (Math.abs(p1.price - p2.price) / p1.price) * 100;
+  // 6. Bullish / Bearish Rectangle (Range)
+  if (highs.length >= 2 && lows.length >= 2) {
+    const recentHighs = highs.slice(-2);
+    const recentLows = lows.slice(-2);
+    const topDiff = Math.abs(recentHighs[0].price - recentHighs[1].price) / recentHighs[0].price;
+    const bottomDiff = Math.abs(recentLows[0].price - recentLows[1].price) / recentLows[0].price;
 
-    if (diffPct <= 1.5) {
+    if (topDiff <= tolerance && bottomDiff <= tolerance) {
+      const topLevel = (recentHighs[0].price + recentHighs[1].price) / 2;
+      const bottomLevel = (recentLows[0].price + recentLows[1].price) / 2;
+      const height = topLevel - bottomLevel;
+      const direction = priorTrend === 'UPTREND' ? 'BULLISH' : 'BEARISH';
+
       patterns.push({
-        name: 'Double Bottom Reversal',
+        name: `${direction === 'BULLISH' ? 'Bullish' : 'Bearish'} Rectangle`,
+        type: direction,
+        points: [...recentHighs, ...recentLows],
+        entry: direction === 'BULLISH' ? topLevel : bottomLevel,
+        stop: direction === 'BULLISH' ? bottomLevel : topLevel,
+        profit: direction === 'BULLISH' ? topLevel + height : bottomLevel - height,
+        confidence: 0.80,
+        desc: `Horizontal Consolidation Range (Rectangle). Height: $${height.toFixed(4)}.`
+      });
+    }
+  }
+
+  // 7. Pennants
+  if (candles.length >= 25 && highs.length >= 2 && lows.length >= 2) {
+    const poleStart = candles[candles.length - 20];
+    const poleEnd = candles[candles.length - 8];
+    if (poleStart && poleEnd) {
+      const poleHeight = poleEnd.close - poleStart.close;
+      const recentHighs = highs.slice(-2);
+      const recentLows = lows.slice(-2);
+      const highSlope = getSlope(recentHighs);
+      const lowSlope = getSlope(recentLows);
+
+      // Symmetrical pennant converging: high slope negative, low slope positive
+      if (highSlope < 0 && lowSlope > 0) {
+        const direction = poleHeight > 0 ? 'BULLISH' : 'BEARISH';
+        const entryPrice = direction === 'BULLISH' ? recentHighs[1].price : recentLows[1].price;
+        patterns.push({
+          name: `${direction === 'BULLISH' ? 'Bullish' : 'Bearish'} Pennant`,
+          type: direction,
+          points: [...recentHighs, ...recentLows],
+          entry: entryPrice,
+          stop: direction === 'BULLISH' ? recentLows[1].price : recentHighs[1].price,
+          profit: entryPrice + poleHeight,
+          confidence: 0.82,
+          desc: `Continuation ${direction} Pennant. Flagpole height: $${Math.abs(poleHeight).toFixed(4)}.`
+        });
+      }
+    }
+  }
+
+  // 8. Triangles (Ascending, Descending, Symmetrical)
+  if (highs.length >= 3 && lows.length >= 3) {
+    const recentHighs = highs.slice(-3);
+    const recentLows = lows.slice(-3);
+    const topSlope = getSlope(recentHighs);
+    const bottomSlope = getSlope(recentLows);
+
+    const topFlat = Math.abs(recentHighs[0].price - recentHighs[2].price) / recentHighs[0].price <= tolerance;
+    const bottomFlat = Math.abs(recentLows[0].price - recentLows[2].price) / recentLows[0].price <= tolerance;
+
+    const widestPoint = recentHighs[0].price - recentLows[0].price;
+
+    // Ascending Triangle (Flat Top + Rising Bottom)
+    if (topFlat && bottomSlope > 0) {
+      patterns.push({
+        name: 'Ascending Triangle (Bilateral)',
         type: 'BULLISH',
-        price1: p1.price,
-        price2: p2.price,
-        desc: `Bullish Double Bottom at $${p2.price.toFixed(4)} (${diffPct.toFixed(2)}% trough symmetry).`
+        points: [...recentHighs, ...recentLows],
+        entry: recentHighs[2].price,
+        stop: recentLows[2].price,
+        profit: recentHighs[2].price + widestPoint,
+        confidence: 0.78,
+        desc: `Bilateral Ascending Triangle. flat resistance at $${recentHighs[2].price.toFixed(4)}.`
+      });
+    }
+    // Descending Triangle (Flat Bottom + Falling Top)
+    else if (bottomFlat && topSlope < 0) {
+      patterns.push({
+        name: 'Descending Triangle (Bilateral)',
+        type: 'BEARISH',
+        points: [...recentHighs, ...recentLows],
+        entry: recentLows[2].price,
+        stop: recentHighs[2].price,
+        profit: recentLows[2].price - widestPoint,
+        confidence: 0.78,
+        desc: `Bilateral Descending Triangle. flat support at $${recentLows[2].price.toFixed(4)}.`
+      });
+    }
+    // Symmetrical Triangle (Converging Slopes)
+    else if (topSlope < 0 && bottomSlope > 0) {
+      const avgTop = recentHighs[2].price;
+      const avgBottom = recentLows[2].price;
+      patterns.push({
+        name: 'Symmetrical Triangle (Bilateral)',
+        type: 'BULLISH', // Standard breakout target
+        points: [...recentHighs, ...recentLows],
+        entry: avgTop,
+        stop: avgBottom,
+        profit: avgTop + widestPoint,
+        confidence: 0.70,
+        desc: `Bilateral Symmetrical Triangle. converging trendlines. Entry unconfirmed until breakout.`
       });
     }
   }
