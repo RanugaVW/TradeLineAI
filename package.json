@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.7",
     "lightweight-charts": "^4.2.0"
   },
   "devDependencies": {
