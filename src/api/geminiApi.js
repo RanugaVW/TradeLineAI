@@ -194,17 +194,15 @@ Output a strict JSON object (no markdown, no backticks) with these exact fields:
 
 Respond ONLY with valid raw JSON.
 `;
-
-  // Attempt Google Gemini API Call
   let aiResult = null;
 
   if (apiKey && !apiKey.includes('placeholder')) {
     const candidateModels = [
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash',
-      'gemini-2.0-flash-exp',
-      'gemini-1.5-pro',
-      'gemini-pro'
+      'gemini-3.5-flash',
+      'gemini-flash-latest',
+      'gemini-3.1-pro-preview',
+      'gemini-2.5-flash',
+      'gemini-1.5-flash'
     ];
 
     for (const modelName of candidateModels) {
@@ -226,8 +224,12 @@ Respond ONLY with valid raw JSON.
             aiResult = JSON.parse(cleanText);
             break;
           }
+        } else {
+          console.warn(`Gemini API Error (${modelName}): ${res.status} ${res.statusText}`, await res.text().catch(() => ''));
         }
-      } catch (err) {}
+      } catch (err) {
+        console.warn(`Gemini API Fetch Error (${modelName}):`, err);
+      }
     }
   }
 
@@ -315,23 +317,26 @@ Respond ONLY with valid raw JSON.
     else if (tradeDuration.includes('Hold')) { tpMult = 1.25; slMult = 0.88; }
 
     // Signal logic
-    const dominantCandleTypes = candlePats.map(p => p.type);
-    const hasBullishCandle = dominantCandleTypes.includes('BULLISH');
-    const hasBearishCandle = dominantCandleTypes.includes('BEARISH');
-    const candleHint = hasBullishCandle && !hasBearishCandle ? 'bullish candlestick confluence'
-      : hasBearishCandle && !hasBullishCandle ? 'bearish candlestick pressure'
-      : 'mixed candlestick signals';
+    let candleHint = 'mixed candlestick signals';
+    if (candlePats.length > 0) {
+      const topPats = candlePats.slice(-2).map(p => p.name).join(' and ');
+      candleHint = `recent patterns including ${topPats}`;
+    } else if (bullishScore > bearishScore) {
+      candleHint = 'bullish structural momentum';
+    } else if (bearishScore > bullishScore) {
+      candleHint = 'bearish structural pressure';
+    }
 
     if (bullPct >= 70) {
       signal = bullPct >= 85 ? 'STRONG BUY' : 'BUY';
       confidence = Math.min(92, 60 + Math.round(bullPct * 0.35));
-      analysisText = `Pattern engine scored ${bullishScore} bullish vs ${bearishScore} bearish signals. ${candleHint.charAt(0).toUpperCase() + candleHint.slice(1)} near support $${nearestSupport.toFixed(4)} with ${rsi <= 30 ? 'oversold RSI (' + rsi + ')' : 'RSI at ' + rsi}. ${patterns?.fibonacci?.goldenPocket?.isActive ? 'Golden Pocket active — high confluence buy zone. ' : ''}Target resistance at $${nearestResistance.toFixed(4)} for ${tradeDuration}.`;
+      analysisText = `Pattern engine scored ${bullishScore} bullish vs ${bearishScore} bearish signals. Price supported by ${candleHint} near support $${nearestSupport.toFixed(4)}. ${rsi <= 30 ? 'Oversold RSI (' + rsi + ') adds momentum. ' : ''}${patterns?.fibonacci?.goldenPocket?.isActive ? 'Golden Pocket active — high confluence buy zone. ' : ''}Target resistance at $${nearestResistance.toFixed(4)} for ${tradeDuration}.`;
     } else if (bearishScore > bullishScore && (100 - bullPct) >= 70) {
       signal = (100 - bullPct) >= 85 ? 'STRONG SELL' : 'SELL';
       confidence = Math.min(90, 60 + Math.round((100 - bullPct) * 0.32));
-      analysisText = `Pattern engine scored ${bearishScore} bearish vs ${bullishScore} bullish signals. ${candleHint.charAt(0).toUpperCase() + candleHint.slice(1)} approaching resistance $${nearestResistance.toFixed(4)}. ${rsi >= 70 ? 'RSI overbought (' + rsi + ') adds downside pressure. ' : ''}Risk of rejection for ${tradeDuration}.`;
+      analysisText = `Pattern engine scored ${bearishScore} bearish vs ${bullishScore} bullish signals. Price pressured by ${candleHint} approaching resistance $${nearestResistance.toFixed(4)}. ${rsi >= 70 ? 'RSI overbought (' + rsi + ') adds downside pressure. ' : ''}Risk of rejection for ${tradeDuration}.`;
     } else {
-      signal = 'BUY';
+      signal = 'BUY'; // Neutral-ish buy bias
       confidence = 72;
       analysisText = `Balanced pattern engine readout (Bullish: ${bullishScore}, Bearish: ${bearishScore}). Price consolidating between support $${nearestSupport.toFixed(4)} and resistance $${nearestResistance.toFixed(4)} with ${candleHint}. Slight upside bias for ${tradeDuration}.`;
     }

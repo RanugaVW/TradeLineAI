@@ -404,7 +404,7 @@ export class ChartViewer {
 
     const extraMarkers = [];
 
-    (patterns.candlestickPatterns || []).slice(-4).forEach(p => {
+    (patterns.candlestickPatterns || []).forEach(p => {
       const isBull = p.type === 'BULLISH';
       extraMarkers.push({
         time: p.time,
@@ -415,7 +415,7 @@ export class ChartViewer {
       });
     });
 
-    (patterns.marketStructure?.bosEvents || []).slice(-3).forEach(b => {
+    (patterns.marketStructure?.bosEvents || []).forEach(b => {
       const isBull = b.type.includes('BULL');
       extraMarkers.push({
         time: b.time,
@@ -423,6 +423,17 @@ export class ChartViewer {
         color: isBull ? '#3b82f6' : '#f59e0b',
         shape: 'square',
         text: `BOS: $${b.price.toFixed(4)}`
+      });
+    });
+
+    (patterns.marketStructure?.chochEvents || []).forEach(c => {
+      const isBull = c.type.includes('BULL');
+      extraMarkers.push({
+        time: c.time,
+        position: isBull ? 'aboveBar' : 'belowBar',
+        color: isBull ? '#8b5cf6' : '#ec4899', // Purple/Pink for CHoCH
+        shape: 'square',
+        text: `CHoCH: $${c.price.toFixed(4)}`
       });
     });
 

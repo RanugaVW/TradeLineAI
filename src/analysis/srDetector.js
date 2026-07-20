@@ -139,6 +139,67 @@ export function detectSupportResistance(candles, options = {}) {
     }
   });
 
+  // Step 2b — Detect rising/falling windows as dynamic S/R zones (gaps)
+  for (let i = 1; i < candles.length; i++) {
+    const c1 = candles[i - 1];
+    const c2 = candles[i];
+
+    // Rising window (Gap up) -> Support zone at the gap range
+    if (c2.low > c1.high) {
+      const gapMid = (c1.high + c2.low) / 2;
+      
+      // Invalidation check: did any subsequent candle close below the window bottom (c1.high)?
+      let invalidated = false;
+      for (let k = i + 1; k < candles.length; k++) {
+        if (candles[k].close < c1.high) {
+          invalidated = true;
+          break;
+        }
+      }
+      
+      if (!invalidated) {
+        candidateHorizontalLines.push({
+          id: `window-sup-${i}`,
+          price: gapMid,
+          bounces: 1,
+          bounceDetails: [{ index: i, time: c2.time, price: gapMid }],
+          type: 'SUPPORT',
+          isSlanted: false,
+          isWindow: true,
+          strength: 70, // Standard window strength
+          distancePct: Number((((gapMid - currentPrice) / currentPrice) * 100).toFixed(2))
+        });
+      }
+    }
+    // Falling window (Gap down) -> Resistance zone at the gap range
+    else if (c2.high < c1.low) {
+      const gapMid = (c1.low + c2.high) / 2;
+      
+      // Invalidation check: did any subsequent candle close above the window top (c1.low)?
+      let invalidated = false;
+      for (let k = i + 1; k < candles.length; k++) {
+        if (candles[k].close > c1.low) {
+          invalidated = true;
+          break;
+        }
+      }
+      
+      if (!invalidated) {
+        candidateHorizontalLines.push({
+          id: `window-res-${i}`,
+          price: gapMid,
+          bounces: 1,
+          bounceDetails: [{ index: i, time: c2.time, price: gapMid }],
+          type: 'RESISTANCE',
+          isSlanted: false,
+          isWindow: true,
+          strength: 70,
+          distancePct: Number((((gapMid - currentPrice) / currentPrice) * 100).toFixed(2))
+        });
+      }
+    }
+  }
+
   // Trendline-Specific Rules (Diagonal S/R)
   const candidateSlantedLines = [];
 

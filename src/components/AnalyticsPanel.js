@@ -198,7 +198,8 @@ export class AnalyticsPanel {
                 ${cPatterns.map(p => `
                   <div class="pattern-chip chip-${p.type.toLowerCase()}" title="${p.desc}">
                     <span class="chip-title">${p.name}</span>
-                    <span class="chip-type">${p.type}</span>
+                    <span class="chip-type">${p.type} (${p.confidence}%)</span>
+                    <span class="chip-status badge-${p.status || 'confirmed'}">${p.status || 'confirmed'}</span>
                     <small class="chip-price">@ $${p.price.toFixed(4)}</small>
                   </div>
                 `).join('')}

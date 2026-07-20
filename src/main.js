@@ -326,7 +326,10 @@ class App {
       this.currentAnalysis = analysis;
 
       // Run Automated Technical Pattern Recognition Engine A-Z
-      const patterns = detectAllPatterns(periodCandles);
+      const patterns = detectAllPatterns(periodCandles, {
+        supportLines: analysis.supportLines,
+        resistanceLines: analysis.resistanceLines
+      });
 
       // Update Chart View preserving user zoom/scroll position unless explicitly reset
       this.chartViewer.setData(candles, resetView);
