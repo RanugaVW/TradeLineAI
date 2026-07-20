@@ -12,6 +12,7 @@
  * 8. Aesthetic Tooltip: Moving mouse/crosshair over markers, patterns, or lines displays a description in simple language.
  */
 import { createChart, LineStyle } from 'lightweight-charts';
+import { DrawingEngine } from './DrawingEngine.js';
 
 export class ChartViewer {
   constructor(containerElement) {
@@ -35,8 +36,10 @@ export class ChartViewer {
 
     this.currentCandles = [];
     this.tooltip = null;
+    this.drawingEngine = null;
     this.initChart();
     this.initTooltip();
+    this._initDrawingEngine();
   }
 
   initChart() {
@@ -93,6 +96,23 @@ export class ChartViewer {
     });
     resizeObserver.observe(this.container);
   }
+
+  _initDrawingEngine() {
+    try {
+      this.drawingEngine = new DrawingEngine(this);
+    } catch (e) {
+      console.warn('DrawingEngine init error:', e);
+    }
+  }
+
+  setDrawingTool(tool)    { this.drawingEngine?.setActiveTool(tool); }
+  setDrawingColor(c)      { this.drawingEngine?.setActiveColor(c); }
+  setDrawingWidth(w)      { this.drawingEngine?.setActiveLineWidth(w); }
+  setDrawingStyle(s)      { this.drawingEngine?.setActiveLineStyle(s); }
+  undoDrawing()           { this.drawingEngine?.undo(); }
+  redoDrawing()           { this.drawingEngine?.redo(); }
+  clearDrawings()         { this.drawingEngine?.clearAll(); }
+  setDrawingSymbol(sym)   { this.drawingEngine?.setSymbol(sym); }
 
   initTooltip() {
     this.tooltip = document.createElement('div');

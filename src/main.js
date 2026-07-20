@@ -108,15 +108,20 @@ class App {
 
     // 4. Initialize Drawing Toolbar Sidebar
     this.drawingToolbar = new DrawingToolbar(drawingElem, {
-      userRole: this.userProfile.role,
       onToolChange: (tool) => {
-        this.chartViewer.setActiveTool(tool);
+        this.chartViewer.setDrawingTool(tool);
       },
-      onSaveAnnotations: () => this.saveAnnotations(),
-      onClearAnnotations: () => {
-        this.chartViewer.clearUserAnnotations();
-        this.saveAnnotations();
-      }
+      onUndo: () => this.chartViewer.undoDrawing(),
+      onRedo: () => this.chartViewer.redoDrawing(),
+      onClear: () => this.chartViewer.clearDrawings(),
+      onColorChange: (c) => this.chartViewer.setDrawingColor(c),
+      onWidthChange: (w) => this.chartViewer.setDrawingWidth(w),
+      onStyleChange: (s) => this.chartViewer.setDrawingStyle(s),
+    });
+
+    // Keep toolbar in sync when tool is changed via keyboard shortcut inside DrawingEngine
+    document.addEventListener('drawingToolChange', (e) => {
+      this.drawingToolbar?.setActiveTool(e.detail.tool);
     });
 
     // 5. Initialize Controls Bar
@@ -184,7 +189,6 @@ class App {
     }
 
     this.authModal.updateUser(this.currentUser, this.userProfile);
-    this.drawingToolbar.setRole(this.userProfile.role);
     this.updateLockScreenState();
 
     // Auth State Listener (Auto Token Refresh & 1-Week Session Persistence)
@@ -199,7 +203,6 @@ class App {
         this.cleanupRealtimeSubscriptions();
       }
       this.authModal.updateUser(this.currentUser, this.userProfile);
-      this.drawingToolbar.setRole(this.userProfile.role);
       this.updateLockScreenState();
       await this.loadSavedAnnotations();
     });
@@ -213,7 +216,6 @@ class App {
     this.profileChannel = subscribeToProfileChanges(this.currentUser.id, (updatedProfile) => {
       this.userProfile = updatedProfile;
       this.authModal.updateUser(this.currentUser, this.userProfile);
-      this.drawingToolbar.setRole(this.userProfile.role);
     });
 
     // Listen to annotation updates
@@ -241,7 +243,6 @@ class App {
       this.userProfile = await fetchUserProfile(user.id);
     }
     this.authModal.updateUser(this.currentUser, this.userProfile);
-    this.drawingToolbar.setRole(this.userProfile.role);
     await this.loadSavedAnnotations();
   }
 
@@ -250,6 +251,11 @@ class App {
     const tfChanged = this.lastTf !== state.timeframe;
     this.lastSymbol = state.symbol;
     this.lastTf = state.timeframe;
+
+    // Save drawings for old symbol, load for new one
+    if (symbolChanged) {
+      this.chartViewer.setDrawingSymbol(state.symbol);
+    }
 
     await this.loadAndAnalyze(symbolChanged || tfChanged);
   }

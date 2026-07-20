@@ -1,129 +1,303 @@
 /**
- * TradingView-Style Interactive Drawing Toolbar Component
- * Supports Trendlines, Horizontal Lines, Text Callouts, Zones, and Cloud Persistence
+ * DrawingToolbar — TradeLine AI
+ * TradingView-parity drawing toolbar with 20 tools in 4 groups,
+ * color picker, line-style selector, width selector, undo/redo buttons.
  */
-
 export class DrawingToolbar {
   constructor(containerElement, options = {}) {
     this.container = containerElement;
-    this.activeTool = 'select'; // 'select', 'trendline', 'horizontal', 'text', 'zone'
-    this.userRole = options.userRole || 'free';
+    this.activeTool = 'select';
     this.onToolChange = options.onToolChange || (() => {});
-    this.onSaveAnnotations = options.onSaveAnnotations || (() => {});
-    this.onClearAnnotations = options.onClearAnnotations || (() => {});
+    this.onUndo = options.onUndo || (() => {});
+    this.onRedo = options.onRedo || (() => {});
+    this.onClear = options.onClear || (() => {});
+    this.onColorChange = options.onColorChange || (() => {});
+    this.onWidthChange = options.onWidthChange || (() => {});
+    this.onStyleChange = options.onStyleChange || (() => {});
+
+    this.activeColor = '#2196F3';
+    this.activeWidth = 2;
+    this.activeStyle = 'solid';
+    this.isCollapsed = false;
+
+    // Group collapse state
+    this.groupOpen = { lines: true, shapes: false, fib: false, annotations: false };
 
     this.render();
+    this._initKeyboardHints();
+    this._initCollapseButton();
   }
 
-  setRole(role) {
-    this.userRole = role || 'free';
-    this.render();
+  setActiveTool(tool) {
+    this.activeTool = tool;
+    this._refreshActiveState();
   }
 
-  setActiveTool(toolName) {
-    this.activeTool = toolName;
-    const buttons = this.container.querySelectorAll('.tool-btn');
-    buttons.forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-tool') === toolName);
-    });
-    this.onToolChange(this.activeTool);
+  // Legacy no-op kept for backward compat
+  setRole() {}
+
+  _initCollapseButton() {
+    // Create floating reopen button (injected into body once)
+    if (!document.getElementById('reopen-drawing-btn')) {
+      const btn = document.createElement('button');
+      btn.id = 'reopen-drawing-btn';
+      btn.className = 'reopen-drawing-floating-btn';
+      btn.title = 'Show Drawing Toolbar';
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+        <span style="writing-mode:vertical-rl;font-size:8px;letter-spacing:1px;">TOOLS</span>
+      `;
+      btn.addEventListener('click', () => this._toggleCollapse());
+      document.body.appendChild(btn);
+    }
+
+    // Collapse button inside toolbar (top-right corner)
+    const collapseBtn = this.container.querySelector('#dtb-collapse-btn');
+    collapseBtn?.addEventListener('click', () => this._toggleCollapse());
+  }
+
+  _toggleCollapse() {
+    this.isCollapsed = !this.isCollapsed;
+    this.container.classList.toggle('toolbar-collapsed', this.isCollapsed);
+    const reopenBtn = document.getElementById('reopen-drawing-btn');
+    if (reopenBtn) reopenBtn.classList.toggle('visible', this.isCollapsed);
+
+    // Trigger chart resize
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 80);
+  }
+
+  _refreshActiveState() {
+    const btns = this.container.querySelectorAll('.dtb-tool-btn');
+    btns.forEach(b => b.classList.toggle('active', b.dataset.tool === this.activeTool));
   }
 
   render() {
-    const isGated = this.userRole === 'free';
-    const lockTitle = isGated ? ' (Requires PRO1 or ADMIN tier plan)' : '';
-
     this.container.innerHTML = `
-      <div class="drawing-toolbar-wrapper">
-        <!-- Select / Cursor -->
-        <button 
-          type="button"
-          class="tool-btn ${this.activeTool === 'select' ? 'active' : ''}" 
-          data-tool="select"
-          title="Pointer / Select Tool">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 3l7 18 3-7 7-3L3 3z"></path></svg>
+      <div class="dtb-wrapper" id="drawing-toolbar">
+
+        <!-- Collapse toggle at very top -->
+        <button class="dtb-icon-btn dtb-collapse-top" id="dtb-collapse-btn"
+                title="Hide Drawing Toolbar"
+                style="width:100%;border-radius:0;border-bottom:1px solid var(--border-color);margin-bottom:3px;height:22px;flex-shrink:0;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
         </button>
 
-        <div class="tool-divider"></div>
+        <!-- Undo / Redo row -->
+        <div class="dtb-undo-row">
+          <button class="dtb-icon-btn" id="dtb-undo" title="Undo (Ctrl+Z)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-4.9L1 10"></path></svg>
+          </button>
+          <button class="dtb-icon-btn" id="dtb-redo" title="Redo (Ctrl+Shift+Z)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-.49-4.9L23 10"></path></svg>
+          </button>
+          <div class="dtb-sep"></div>
+          <button class="dtb-icon-btn dtb-clear" id="dtb-clear" title="Clear All Drawings">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
 
-        <!-- Trendline Tool -->
-        <button 
-          type="button"
-          class="tool-btn ${this.activeTool === 'trendline' ? 'active' : ''} ${isGated ? 'gated-btn' : ''}" 
-          data-tool="trendline"
-          title="Trend Line Tool: Click on chart to place custom slanted line${lockTitle}">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="20" x2="20" y2="4"></line><circle cx="4" cy="20" r="2"></circle><circle cx="20" cy="4" r="2"></circle></svg>
+        <!-- Pointer / Select -->
+        <button class="dtb-tool-btn active" data-tool="select" title="Select / Move (Esc)">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7 18 3-7 7-3L3 3z"></path></svg>
+          <span class="dtb-shortcut">Esc</span>
         </button>
 
-        <!-- Horizontal Line Tool -->
-        <button 
-          type="button"
-          class="tool-btn ${this.activeTool === 'horizontal' ? 'active' : ''} ${isGated ? 'gated-btn' : ''}" 
-          data-tool="horizontal"
-          title="Horizontal Level Tool: Click on price point to draw custom support/resistance line${lockTitle}">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line></svg>
-        </button>
+        <div class="dtb-sep"></div>
 
-        <!-- Text Callout Tool -->
-        <button 
-          type="button"
-          class="tool-btn ${this.activeTool === 'text' ? 'active' : ''} ${isGated ? 'gated-btn' : ''}" 
-          data-tool="text"
-          title="Text Note Tool: Click on chart to attach custom note / callout${lockTitle}">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-        </button>
+        <!-- ─── LINES GROUP ─── -->
+        ${this._group('lines', 'Lines', `
+          ${this._btn('trendline',       'Trend Line',      'Alt+T', this._svg_trendline())}
+          ${this._btn('extended-line',   'Extended Line',   '',       this._svg_extended())}
+          ${this._btn('ray',             'Ray',             'Alt+R',  this._svg_ray())}
+          ${this._btn('horizontal',      'Horizontal Line', 'Alt+H',  this._svg_horizontal())}
+          ${this._btn('vertical',        'Vertical Line',   'Alt+V',  this._svg_vertical())}
+          ${this._btn('channel',         'Parallel Channel','',       this._svg_channel())}
+          ${this._btn('pitchfork',       'Pitchfork',       '',       this._svg_pitchfork())}
+        `)}
 
-        <!-- Rectangle / Zone Tool -->
-        <button 
-          type="button"
-          class="tool-btn ${this.activeTool === 'zone' ? 'active' : ''} ${isGated ? 'gated-btn' : ''}" 
-          data-tool="zone"
-          title="Price Zone / Box Tool: Highlight price accumulation or range box${lockTitle}">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
-        </button>
+        <!-- ─── SHAPES GROUP ─── -->
+        ${this._group('shapes', 'Shapes', `
+          ${this._btn('zone',     'Rectangle / Zone', 'Alt+Z', this._svg_zone())}
+          ${this._btn('triangle', 'Triangle',         '',      this._svg_triangle())}
+          ${this._btn('ellipse',  'Ellipse',          '',      this._svg_ellipse())}
+        `)}
 
-        <div class="tool-divider"></div>
+        <!-- ─── FIBONACCI GROUP ─── -->
+        ${this._group('fib', 'Fibonacci', `
+          ${this._btn('fib',       'Fib Retracement', 'Alt+F', this._svg_fib())}
+          ${this._btn('fib-ext',   'Fib Extension',   '',      this._svg_fib_ext())}
+          ${this._btn('fib-fan',   'Fib Fan',         '',      this._svg_fib_fan())}
+          ${this._btn('fib-time',  'Fib Time Zones',  '',      this._svg_fib_time())}
+        `)}
 
-        <!-- Clear All Tool -->
-        <button 
-          type="button"
-          class="tool-btn clear-tool-btn" 
-          id="clear-annotations-btn"
-          title="Clear Custom Drawings: Erase custom drawings for this symbol">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-        </button>
+        <!-- ─── ANNOTATIONS GROUP ─── -->
+        ${this._group('annotations', 'Annotate', `
+          ${this._btn('text',    'Text Label',       'Alt+L', this._svg_text())}
+          ${this._btn('callout', 'Callout Arrow',    '',      this._svg_callout())}
+          ${this._btn('note',    'Anchored Note',    '',      this._svg_note())}
+          ${this._btn('measure', 'Price Measure',    'Alt+M', this._svg_measure())}
+          ${this._btn('long',    'Long Position',    '',      this._svg_long())}
+          ${this._btn('short',   'Short Position',   '',      this._svg_short())}
+        `)}
 
-        <!-- Cloud Save Tool -->
-        <button 
-          type="button"
-          class="tool-btn save-tool-btn ${isGated ? 'gated-btn' : ''}" 
-          id="save-annotations-btn"
-          title="Save Drawings to Account: Cloud sync annotations to your Supabase profile${lockTitle}">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-        </button>
+        <div class="dtb-sep"></div>
+
+        <!-- Style Controls -->
+        <div class="dtb-style-controls">
+          <!-- Color swatch -->
+          <label class="dtb-color-wrap" title="Drawing Color">
+            <span class="dtb-color-swatch" id="dtb-color-swatch" style="background:${this.activeColor};"></span>
+            <input type="color" id="dtb-color-picker" value="${this.activeColor}" style="width:0;height:0;opacity:0;position:absolute;">
+          </label>
+
+          <!-- Line style -->
+          <select class="dtb-select" id="dtb-line-style" title="Line Style">
+            <option value="solid">—</option>
+            <option value="dashed">- -</option>
+            <option value="dotted">···</option>
+          </select>
+
+          <!-- Line width -->
+          <select class="dtb-select" id="dtb-line-width" title="Line Width">
+            <option value="1">1px</option>
+            <option value="2" selected>2px</option>
+            <option value="3">3px</option>
+            <option value="4">4px</option>
+          </select>
+        </div>
+
       </div>
     `;
 
-    this.attachEvents();
+    this._attachEvents();
   }
 
-  attachEvents() {
-    const buttons = this.container.querySelectorAll('.tool-btn[data-tool]');
-    buttons.forEach(btn => {
+  _group(id, label, btnsHTML) {
+    const open = this.groupOpen[id];
+    return `
+      <div class="dtb-group" data-group="${id}">
+        <button class="dtb-group-header ${open ? 'open' : ''}" data-group-toggle="${id}">
+          <span>${label}</span>
+          <svg class="dtb-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="dtb-group-body ${open ? 'open' : ''}">
+          ${btnsHTML}
+        </div>
+      </div>
+    `;
+  }
+
+  _btn(tool, title, shortcut, svgIcon) {
+    const sc = shortcut ? `<span class="dtb-shortcut">${shortcut}</span>` : '';
+    return `
+      <button class="dtb-tool-btn ${this.activeTool === tool ? 'active' : ''}"
+              data-tool="${tool}"
+              title="${title}${shortcut ? ' (' + shortcut + ')' : ''}">
+        ${svgIcon}
+        ${sc}
+      </button>
+    `;
+  }
+
+  _attachEvents() {
+    // Tool buttons
+    this.container.querySelectorAll('.dtb-tool-btn[data-tool]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const tool = btn.getAttribute('data-tool');
-        this.setActiveTool(tool);
+        this.activeTool = btn.dataset.tool;
+        this._refreshActiveState();
+        this.onToolChange(this.activeTool);
       });
     });
 
-    const clearBtn = this.container.querySelector('#clear-annotations-btn');
-    clearBtn?.addEventListener('click', () => {
-      this.onClearAnnotations();
+    // Group toggles
+    this.container.querySelectorAll('[data-group-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const g = btn.dataset.groupToggle;
+        this.groupOpen[g] = !this.groupOpen[g];
+        btn.classList.toggle('open', this.groupOpen[g]);
+        const body = this.container.querySelector(`.dtb-group[data-group="${g}"] .dtb-group-body`);
+        if (body) body.classList.toggle('open', this.groupOpen[g]);
+      });
     });
 
-    const saveBtn = this.container.querySelector('#save-annotations-btn');
-    saveBtn?.addEventListener('click', () => {
-      this.onSaveAnnotations();
+    // Undo / Redo / Clear
+    this.container.querySelector('#dtb-undo')?.addEventListener('click', () => this.onUndo());
+    this.container.querySelector('#dtb-redo')?.addEventListener('click', () => this.onRedo());
+    this.container.querySelector('#dtb-clear')?.addEventListener('click', () => this.onClear());
+
+    // Color picker
+    const picker = this.container.querySelector('#dtb-color-picker');
+    const swatch = this.container.querySelector('#dtb-color-swatch');
+    this.container.querySelector('.dtb-color-wrap')?.addEventListener('click', () => picker?.click());
+    picker?.addEventListener('input', (e) => {
+      this.activeColor = e.target.value;
+      if (swatch) swatch.style.background = this.activeColor;
+      this.onColorChange(this.activeColor);
+    });
+
+    // Line style
+    this.container.querySelector('#dtb-line-style')?.addEventListener('change', (e) => {
+      this.activeStyle = e.target.value;
+      this.onStyleChange(this.activeStyle);
+    });
+
+    // Line width
+    this.container.querySelector('#dtb-line-width')?.addEventListener('change', (e) => {
+      this.activeWidth = parseInt(e.target.value);
+      this.onWidthChange(this.activeWidth);
     });
   }
+
+  _initKeyboardHints() {
+    const shortcuts = {
+      't': 'trendline', 'r': 'ray', 'h': 'horizontal',
+      'v': 'vertical', 'z': 'zone', 'f': 'fib',
+      'l': 'text', 'm': 'measure',
+    };
+    document.addEventListener('keydown', (e) => {
+      if (e.target.matches('input,textarea,select,[contenteditable]')) return;
+      if (e.altKey && shortcuts[e.key]) {
+        e.preventDefault();
+        this.activeTool = shortcuts[e.key];
+        this._refreshActiveState();
+        this.onToolChange(this.activeTool);
+      }
+      if (e.key === 'Escape') {
+        this.activeTool = 'select';
+        this._refreshActiveState();
+        this.onToolChange('select');
+      }
+    });
+  }
+
+  // ─── SVG ICONS ─────────────────────────────────────────────
+  _svgWrap(content) {
+    return `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${content}</svg>`;
+  }
+  _svg_trendline()  { return this._svgWrap(`<line x1="4" y1="20" x2="20" y2="4"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="4" r="2"/>`); }
+  _svg_extended()   { return this._svgWrap(`<line x1="2" y1="22" x2="22" y2="2"/>`); }
+  _svg_ray()        { return this._svgWrap(`<line x1="4" y1="20" x2="22" y2="4"/><circle cx="4" cy="20" r="2"/>`); }
+  _svg_horizontal() { return this._svgWrap(`<line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="6" x2="6" y2="6" stroke-dasharray="2,2"/>`); }
+  _svg_vertical()   { return this._svgWrap(`<line x1="12" y1="2" x2="12" y2="22"/><line x1="6" y1="2" x2="6" y2="6" stroke-dasharray="2,2"/>`); }
+  _svg_channel()    { return this._svgWrap(`<line x1="4" y1="18" x2="20" y2="8"/><line x1="4" y1="22" x2="20" y2="12"/>`); }
+  _svg_pitchfork()  { return this._svgWrap(`<path d="M4 20 L12 4"/><path d="M4 20 L2 12"/><path d="M4 20 L20 12"/><line x1="8" y1="10" x2="8" y2="20" stroke-dasharray="2,2"/>`); }
+  _svg_zone()       { return this._svgWrap(`<rect x="3" y="5" width="18" height="14" rx="1" stroke-dasharray="0"/>`); }
+  _svg_triangle()   { return this._svgWrap(`<polygon points="12 4 22 20 2 20"/>`); }
+  _svg_ellipse()    { return this._svgWrap(`<ellipse cx="12" cy="12" rx="10" ry="6"/>`); }
+  _svg_fib()        { return this._svgWrap(`<line x1="3" y1="18" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12" stroke-dasharray="4,2"/><line x1="3" y1="15" x2="21" y2="15" stroke-dasharray="4,2"/>`); }
+  _svg_fib_ext()    { return this._svgWrap(`<line x1="3" y1="20" x2="21" y2="4"/><line x1="3" y1="8" x2="21" y2="8" stroke-dasharray="4,2"/><line x1="3" y1="2" x2="21" y2="2" stroke-dasharray="4,2"/>`); }
+  _svg_fib_fan()    { return this._svgWrap(`<line x1="4" y1="20" x2="20" y2="4"/><line x1="4" y1="20" x2="20" y2="10" stroke-dasharray="4,2"/><line x1="4" y1="20" x2="20" y2="16" stroke-dasharray="4,2"/>`); }
+  _svg_fib_time()   { return this._svgWrap(`<line x1="4" y1="4" x2="4" y2="20"/><line x1="10" y1="4" x2="10" y2="20" stroke-dasharray="3,2"/><line x1="20" y1="4" x2="20" y2="20" stroke-dasharray="3,2"/>`); }
+  _svg_text()       { return this._svgWrap(`<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`); }
+  _svg_callout()    { return this._svgWrap(`<polygon points="12 2 22 20 2 20"/><line x1="12" y1="20" x2="12" y2="22" stroke-dasharray="2,2"/>`); }
+  _svg_note()       { return this._svgWrap(`<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`); }
+  _svg_measure()    { return this._svgWrap(`<path d="M2 2v20M22 2v20M2 12h20" stroke-dasharray="4,2"/>`); }
+  _svg_long()       { return this._svgWrap(`<rect x="3" y="8" width="18" height="13" fill="rgba(76,175,80,0.25)" stroke="#4CAF50"/><line x1="3" y1="14" x2="21" y2="14" stroke="#2196F3"/>`); }
+  _svg_short()      { return this._svgWrap(`<rect x="3" y="3" width="18" height="13" fill="rgba(239,83,80,0.25)" stroke="#EF5350"/><line x1="3" y1="9" x2="21" y2="9" stroke="#2196F3"/>`); }
 }
