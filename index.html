@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeLine AI: Support & Resistance Auto-Analyzer & Market Advisor</title>
+  <meta name="description" content="TradeLine AI: Advanced Crypto Web Portal featuring Support & Resistance Detection, Gemini AI Trade Signals, and LKR Budget Optimization." />
+  <script type="importmap">
+  {
+    "imports": {
+      "lightweight-charts": "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/+esm",
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/+esm"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="./src/styles/main.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+      <div class="brand-container">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+        </div>
+        <h1 class="brand-title">TradeLine AI</h1>
+      </div>
+
+      <div class="header-right">
+        <div class="header-status" title="Active S/R engine strictly validating >= 3 price bounces">
+          <span class="live-pulse"></span>
+          <span>Engine Active (3+ Bounce Rule)</span>
+        </div>
+
+        <!-- Supabase Auth / User Profile Header Section -->
+        <div id="user-auth-container" class="auth-header-section"></div>
+      </div>
+    </header>
+
+    <!-- Top Gemini AI Trade Advisor & LKR Optimizer Bar -->
+    <div id="ai-trade-container" class="ai-trade-top-container"></div>
+
+    <!-- Controls Bar -->
+    <div id="controls-container" class="controls-container"></div>
+
+    <!-- Main Dashboard Body -->
+    <main class="main-dashboard" id="main-dashboard">
+      <!-- Auth Lock Overlay (hidden by default) -->
+      <div id="auth-lock-overlay" class="auth-lock-overlay hidden">
+        <div class="lock-card">
+          <div class="lock-icon">
+            <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h2 class="lock-title">Sign In Required</h2>
+          <p class="lock-desc">
+            Please Sign In or Register an account to access TradingView charts, automated 3+ bounce support & resistance detection, and custom drawing tools.
+          </p>
+          <button type="button" id="lock-screen-signin-btn" class="lock-btn">
+            Sign In / Register Now
+          </button>
+        </div>
+      </div>
+
+      <!-- TradingView Drawing Sidebar Toolbar -->
+      <div id="drawing-toolbar-container" class="drawing-toolbar-container"></div>
+
+      <!-- Interactive Chart View -->
+      <div id="chart-container" class="chart-container"></div>
+
+      <!-- Analytics Breakdown Panel -->
+      <div id="analytics-container" class="analytics-container">
+        <div id="analytics-stats"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Dedicated AI Focused Analysis & Zoomed Chart Modal -->
+  <div id="ai-modal-overlay" class="ai-modal-overlay"></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
