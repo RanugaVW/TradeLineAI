@@ -773,16 +773,16 @@ export class DrawingEngine {
     const x1=this._timeToX(p1.time),x2=this._timeToX(p2.time);
     if (x1==null||x2==null) return;
     const high=Math.max(p1.price,p2.price), low=Math.min(p1.price,p2.price), range=high-low;
-    const lx=Math.min(x1,x2);
+    const rx = Math.max(x1, x2);
+    const lx = Math.min(x1, x2);
 
     this._FIB_LEVELS.forEach(lv => {
-      const price=high-lv.r*range;
-      const y=this._priceToY(price);
-      if (y==null) return;
-      g.appendChild(this._line(lx,y,W,y,lv.col,1,'6,3'));
-      g.appendChild(this._rect(W-88,y-9,86,18,'rgba(9,13,22,0.80)','none',0,3));
-      g.appendChild(this._txt(W-85,y,`${lv.lbl}  $${price.toFixed(5)}`,lv.col,9));
-      g.appendChild(this._txt(lx+3,y-7,lv.lbl,lv.col,8));
+      const price = high - lv.r * range;
+      const y = this._priceToY(price);
+      if (y == null) return;
+      g.appendChild(this._line(lx, y, rx, y, lv.col, 1, '6,3'));
+      g.appendChild(this._txt(lx + 3, y - 7, lv.lbl, lv.col, 8));
+      g.appendChild(this._txt(rx + 5, y + 3, `$${price.toFixed(5)}`, lv.col, 9));
     });
     // Anchor line
     const ay1=this._priceToY(p1.price),ay2=this._priceToY(p2.price);

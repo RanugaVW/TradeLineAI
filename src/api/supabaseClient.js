@@ -124,6 +124,13 @@ export async function signOutUser() {
   }
   try {
     localStorage.removeItem('crypto_portal_session_7d');
+    // Forcefully remove any other Supabase default auth tokens
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('-auth-token') || key.includes('supabase.auth.token'))) {
+        localStorage.removeItem(key);
+      }
+    }
   } catch (e) {}
 }
 
