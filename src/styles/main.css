@@ -1200,12 +1200,6 @@ body {
   display: none !important;
 }
 
-border-radius: 8px;
-font-size: 0.82rem;
-line-height: 1.4;
-border: 1px solid rgba(0, 230, 118, 0.3);
-}
-
 /* Landing Page / Auth Lock Overlay */
 .auth-lock-overlay {
   position: fixed;
