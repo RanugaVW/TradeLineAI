@@ -26,6 +26,8 @@ export class ChartViewer {
     this.aiOverlayPriceLines = [];
     this.patternPriceLines = [];
 
+    this.showLabels = true;
+
     this.baseSRMarkers = [];
     this.currentPatternMarkers = [];
 
@@ -105,14 +107,14 @@ export class ChartViewer {
     }
   }
 
-  setDrawingTool(tool)    { this.drawingEngine?.setActiveTool(tool); }
-  setDrawingColor(c)      { this.drawingEngine?.setActiveColor(c); }
-  setDrawingWidth(w)      { this.drawingEngine?.setActiveLineWidth(w); }
-  setDrawingStyle(s)      { this.drawingEngine?.setActiveLineStyle(s); }
-  undoDrawing()           { this.drawingEngine?.undo(); }
-  redoDrawing()           { this.drawingEngine?.redo(); }
-  clearDrawings()         { this.drawingEngine?.clearAll(); }
-  setDrawingSymbol(sym)   { this.drawingEngine?.setSymbol(sym); }
+  setDrawingTool(tool) { this.drawingEngine?.setActiveTool(tool); }
+  setDrawingColor(c) { this.drawingEngine?.setActiveColor(c); }
+  setDrawingWidth(w) { this.drawingEngine?.setActiveLineWidth(w); }
+  setDrawingStyle(s) { this.drawingEngine?.setActiveLineStyle(s); }
+  undoDrawing() { this.drawingEngine?.undo(); }
+  redoDrawing() { this.drawingEngine?.redo(); }
+  clearDrawings() { this.drawingEngine?.clearAll(); }
+  setDrawingSymbol(sym) { this.drawingEngine?.setSymbol(sym); }
 
   initTooltip() {
     this.tooltip = document.createElement('div');
@@ -281,10 +283,10 @@ export class ChartViewer {
     if (!srData || !this.candlestickSeries) return;
 
     this.lastSRData = srData;
-    const { 
-      supportLines = [], 
-      resistanceLines = [], 
-      showSupport = false, 
+    const {
+      supportLines = [],
+      resistanceLines = [],
+      showSupport = false,
       showResistance = false,
       rangeStartSec = null,
       rangeEndSec = null
@@ -294,12 +296,12 @@ export class ChartViewer {
     const DashedLineStyle = LineStyle?.Dashed ?? 2;
 
     this.priceLines.forEach(line => {
-      try { this.candlestickSeries.removePriceLine(line); } catch (e) {}
+      try { this.candlestickSeries.removePriceLine(line); } catch (e) { }
     });
     this.priceLines = [];
 
     this.trendlineSeriesList.forEach(series => {
-      try { this.chart.removeSeries(series); } catch (e) {}
+      try { this.chart.removeSeries(series); } catch (e) { }
     });
     this.trendlineSeriesList = [];
 
@@ -308,8 +310,8 @@ export class ChartViewer {
     if (showSupport) activeLines.push(...supportLines);
     if (showResistance) activeLines.push(...resistanceLines);
 
-    let futureTime = (this.currentCandles && this.currentCandles.length > 0) 
-      ? this.currentCandles[this.currentCandles.length - 1].time 
+    let futureTime = (this.currentCandles && this.currentCandles.length > 0)
+      ? this.currentCandles[this.currentCandles.length - 1].time
       : null;
 
     if (this.currentCandles && this.currentCandles.length > 5) {
@@ -325,10 +327,10 @@ export class ChartViewer {
       const priceKey = line.price.toFixed(2);
       const isExtended = this.allExtended || this.extendedPriceKeys.has(priceKey);
 
-      let firstTouchTime = (line.bounceDetails && line.bounceDetails.length > 0) 
-        ? line.bounceDetails[0].time 
+      let firstTouchTime = (line.bounceDetails && line.bounceDetails.length > 0)
+        ? line.bounceDetails[0].time
         : (this.currentCandles && this.currentCandles.length > 0 ? this.currentCandles[0].time : null);
-      
+
       let lastTouchTime = (line.bounceDetails && line.bounceDetails.length > 0)
         ? line.bounceDetails[line.bounceDetails.length - 1].time
         : (this.currentCandles && this.currentCandles.length > 0 ? this.currentCandles[this.currentCandles.length - 1].time : null);
@@ -403,6 +405,11 @@ export class ChartViewer {
   }
 
   combineAndSetMarkers() {
+    if (this.showLabels === false) {
+      this.candlestickSeries.setMarkers([]);
+      return;
+    }
+
     const allMarkers = [...(this.baseSRMarkers || []), ...(this.currentPatternMarkers || [])];
     const markerMap = new Map();
     allMarkers.forEach(m => {
@@ -418,7 +425,7 @@ export class ChartViewer {
     if (!patterns || !this.candlestickSeries) return;
 
     this.patternPriceLines.forEach(line => {
-      try { this.candlestickSeries.removePriceLine(line); } catch (e) {}
+      try { this.candlestickSeries.removePriceLine(line); } catch (e) { }
     });
     this.patternPriceLines = [];
 
@@ -431,7 +438,7 @@ export class ChartViewer {
         position: isBull ? 'belowBar' : 'aboveBar',
         color: isBull ? '#00e676' : '#ff1744',
         shape: isBull ? 'arrowUp' : 'arrowDown',
-        text: `🕯️ ${p.name}`
+        text: `[CANDLE] ${p.name}`
       });
     });
 
@@ -457,6 +464,106 @@ export class ChartViewer {
       });
     });
 
+    (patterns.marketStructure?.pivots || []).forEach(p => {
+      if (p.label) {
+        extraMarkers.push({
+          time: p.time,
+          position: p.type === 'HIGH' ? 'aboveBar' : 'belowBar',
+          color: p.type === 'HIGH' ? '#f43f5e' : '#10b981', // Rose for highs, Emerald for lows
+          shape: 'circle',
+          text: p.label
+        });
+      }
+    });
+
+    if (!this.structureExtensionSeries) {
+      this.structureExtensionSeries = this.chart.addLineSeries({
+        color: 'rgba(148, 163, 184, 0.7)', // Slate-400 with opacity
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false
+      });
+    }
+
+    if (patterns.marketStructure?.active_trendline && this.currentCandles && this.currentCandles.length > 0) {
+      const at = patterns.marketStructure.active_trendline;
+      const lineData = [];
+      const candles = this.currentCandles;
+
+      if (at.points && at.points.length > 0) {
+        const firstIndex = at.points[0].index;
+        const lastIndex = candles.length - 1;
+        const currentPrice = candles[lastIndex].close;
+        const projectTo = lastIndex + 25; // Project 25 candles into the future
+
+        let finalTime = null;
+        let finalPrice = null;
+
+        for (let i = firstIndex; i <= projectTo; i++) {
+          let time;
+          if (i < candles.length) {
+            time = candles[i].time;
+          } else {
+            const lastTime = candles[candles.length - 1].time;
+            // Handle timeframe step correctly. Assuming time is unix timestamp in seconds.
+            let timeDiff = 3600; // default 1 hour
+            if (candles.length > 1) {
+              const t1 = candles[candles.length - 1].time;
+              const t2 = candles[candles.length - 2].time;
+              // if string (date), parse it, but Lightweight Charts uses unix seconds or YYYY-MM-DD
+              if (typeof t1 === 'number' && typeof t2 === 'number') {
+                timeDiff = t1 - t2;
+              }
+            }
+
+            const offset = i - lastIndex;
+            if (typeof lastTime === 'number') {
+              time = lastTime + (timeDiff * offset);
+            } else {
+              // If it's a string, just approximate it or stop drawing in future
+              time = lastTime;
+            }
+          }
+
+          const price = at.slope * i + at.intercept;
+          // Only add if time is a number and valid
+          if (typeof time === 'number' && time > 0) {
+            lineData.push({ time, value: price });
+            if (i === projectTo) {
+              finalTime = time;
+              finalPrice = price;
+            }
+          }
+        }
+
+        this.structureExtensionSeries.setData(lineData);
+
+        if (finalTime && finalPrice) {
+          const diff = finalPrice - currentPrice;
+          const pct = ((diff / currentPrice) * 100).toFixed(2);
+          const isBull = diff >= 0;
+
+          this.structureExtensionSeries.setMarkers([{
+            time: finalTime,
+            position: isBull ? 'aboveBar' : 'belowBar',
+            color: isBull ? '#10b981' : '#f43f5e',
+            shape: isBull ? 'arrowUp' : 'arrowDown',
+            text: `Prediction: ${diff >= 0 ? '+' : ''}${pct}%`
+          }]);
+        } else {
+          this.structureExtensionSeries.setMarkers([]);
+        }
+      } else {
+        this.structureExtensionSeries.setData([]);
+        this.structureExtensionSeries.setMarkers([]);
+      }
+    } else if (this.structureExtensionSeries) {
+      this.structureExtensionSeries.setData([]);
+      this.structureExtensionSeries.setMarkers([]);
+    }
+
     if (patterns.fibonacci?.goldenPocket?.isActive) {
       const gpTop = patterns.fibonacci.goldenPocket.top;
       const gpLine = this.candlestickSeries.createPriceLine({
@@ -465,7 +572,7 @@ export class ChartViewer {
         lineWidth: 2,
         lineStyle: 1,
         axisLabelVisible: true,
-        title: `🎯 FIB GOLDEN POCKET ($${gpTop})`
+        title: `FIB GOLDEN POCKET ($${gpTop})`
       });
       this.patternPriceLines.push(gpLine);
     }
@@ -475,44 +582,7 @@ export class ChartViewer {
       const isBull = cp.type === 'BULLISH';
       const patColor = isBull ? '#00e676' : '#ff1744';
 
-      // Entry Price Line
-      if (cp.entry) {
-        const entryLine = this.candlestickSeries.createPriceLine({
-          price: cp.entry,
-          color: patColor,
-          lineWidth: 2,
-          lineStyle: 2, // Dashed
-          axisLabelVisible: false,
-          title: `🔑 ${cp.name} ENTRY ($${cp.entry.toFixed(4)})`
-        });
-        this.patternPriceLines.push(entryLine);
-      }
 
-      // Stop Loss Price Line
-      if (cp.stop) {
-        const stopLine = this.candlestickSeries.createPriceLine({
-          price: cp.stop,
-          color: '#ff9800',
-          lineWidth: 1.5,
-          lineStyle: 3, // Dotted
-          axisLabelVisible: false,
-          title: `🛑 ${cp.name} STOP ($${cp.stop.toFixed(4)})`
-        });
-        this.patternPriceLines.push(stopLine);
-      }
-
-      // Take Profit Price Line
-      if (cp.profit) {
-        const profitLine = this.candlestickSeries.createPriceLine({
-          price: cp.profit,
-          color: '#2196f3',
-          lineWidth: 2,
-          lineStyle: 2, // Dashed
-          axisLabelVisible: false,
-          title: `🚀 ${cp.name} TARGET TP ($${cp.profit.toFixed(4)})`
-        });
-        this.patternPriceLines.push(profitLine);
-      }
 
       // Add a pattern marker on the latest pivot/candle
       const markTime = cp.points && cp.points.length > 0
@@ -525,10 +595,77 @@ export class ChartViewer {
           position: isBull ? 'belowBar' : 'aboveBar',
           color: patColor,
           shape: isBull ? 'arrowUp' : 'arrowDown',
-          text: `📊 ${cp.name}`
+          text: `[PATTERN] ${cp.name}`
         });
       }
     });
+
+    // Render AI Prediction
+    if (!this.aiPredictionSeries) {
+      this.aiPredictionSeries = this.chart.addLineSeries({
+        lineWidth: 3,
+        lineStyle: LineStyle.Dashed,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false
+      });
+    }
+
+    if (patterns.prediction && patterns.prediction.direction !== 'NEUTRAL' && this.currentCandles && this.currentCandles.length > 0) {
+      const pred = patterns.prediction;
+      const isUp = pred.direction === 'UP';
+      const color = isUp ? '#00e676' : '#ff1744';
+
+      this.aiPredictionSeries.applyOptions({ color });
+
+      const lastCandle = this.currentCandles[this.currentCandles.length - 1];
+      const lineData = [];
+      const startPrice = lastCandle.close;
+
+      let avgBody = 0;
+      const lookback = Math.min(14, this.currentCandles.length);
+      for (let i = this.currentCandles.length - lookback; i < this.currentCandles.length; i++) {
+        avgBody += Math.abs(this.currentCandles[i].close - this.currentCandles[i].open);
+      }
+      avgBody = avgBody / lookback || (startPrice * 0.001);
+
+      const steepnessFactor = Math.max(0.5, (pred.probability / 50));
+      const slope = (isUp ? 1 : -1) * avgBody * steepnessFactor;
+
+      const projectTo = 15; // 15 candles ahead
+      const timeDiff = this.currentCandles.length > 1
+        ? (typeof lastCandle.time === 'number' && typeof this.currentCandles[this.currentCandles.length - 2].time === 'number'
+          ? lastCandle.time - this.currentCandles[this.currentCandles.length - 2].time
+          : 3600)
+        : 3600;
+
+      for (let i = 0; i <= projectTo; i++) {
+        let time = lastCandle.time;
+        if (typeof time === 'number') {
+          time = time + (timeDiff * i);
+          lineData.push({ time, value: startPrice + (slope * i) });
+        }
+      }
+
+      this.aiPredictionSeries.setData(lineData);
+
+      if (lineData.length > 0) {
+        const lastPoint = lineData[lineData.length - 1];
+        this.aiPredictionSeries.setMarkers([{
+          time: lastPoint.time,
+          position: isUp ? 'belowBar' : 'aboveBar',
+          color: color,
+          shape: isUp ? 'arrowUp' : 'arrowDown',
+          text: `PREDICTION: ${pred.direction} (${pred.probability}%)`
+        }]);
+      } else {
+        this.aiPredictionSeries.setMarkers([]);
+      }
+
+    } else if (this.aiPredictionSeries) {
+      this.aiPredictionSeries.setData([]);
+      this.aiPredictionSeries.setMarkers([]);
+    }
 
     this.currentPatternMarkers = extraMarkers;
     this.combineAndSetMarkers();
@@ -574,7 +711,7 @@ export class ChartViewer {
         position: isSup ? 'belowBar' : 'aboveBar',
         color: isSup ? '#00e676' : '#ff1744',
         shape: 'arrowRight',
-        text: `🎯 FOCUS: ${targetLine.type} ($${targetLine.price.toFixed(4)})`
+        text: `FOCUS: ${targetLine.type} ($${targetLine.price.toFixed(4)})`
       };
       this.candlestickSeries.setMarkers([focusMarker]);
     }
@@ -609,7 +746,7 @@ export class ChartViewer {
           position: pattern.type === 'BULLISH' ? 'belowBar' : 'aboveBar',
           color: pattern.type === 'BULLISH' ? '#00e676' : '#ff1744',
           shape: 'arrowRight',
-          text: `🎯 PATTERN FOCUS: ${pattern.name}`
+          text: `FOCUS: ${pattern.name}`
         };
         this.candlestickSeries.setMarkers([focusMarker]);
       } catch (e) {
@@ -642,7 +779,7 @@ export class ChartViewer {
         position: 'belowBar',
         color: '#00e676',
         shape: 'arrowUp',
-        text: `🎯 BUY ENTRY ZONE ($${aiData.entryPrice})`
+        text: `ENTRY ZONE ($${aiData.entryPrice})`
       });
     }
 
@@ -655,7 +792,7 @@ export class ChartViewer {
         lineWidth: 2,
         lineStyle: 2,
         axisLabelVisible: true,
-        title: `🚀 TARGET TP ($${aiData.takeProfitPrice.toFixed(4)})`
+        title: `TARGET TP ($${aiData.takeProfitPrice.toFixed(4)})`
       });
       this.aiOverlayPriceLines.push(tpLine);
     }
@@ -667,7 +804,7 @@ export class ChartViewer {
         lineWidth: 2,
         lineStyle: 2,
         axisLabelVisible: true,
-        title: `🛑 STOP LOSS ($${aiData.stopLossPrice.toFixed(4)})`
+        title: `STOP LOSS ($${aiData.stopLossPrice.toFixed(4)})`
       });
       this.aiOverlayPriceLines.push(slLine);
     }
@@ -679,7 +816,7 @@ export class ChartViewer {
         lineWidth: 2,
         lineStyle: 0,
         axisLabelVisible: true,
-        title: `🎯 ENTRY ($${aiData.entryPrice.toFixed(4)})`
+        title: `ENTRY ($${aiData.entryPrice.toFixed(4)})`
       });
       this.aiOverlayPriceLines.push(entryLine);
     }
@@ -687,7 +824,7 @@ export class ChartViewer {
 
   clearAITradeOverlay() {
     this.aiOverlayPriceLines.forEach(line => {
-      try { this.candlestickSeries.removePriceLine(line); } catch (e) {}
+      try { this.candlestickSeries.removePriceLine(line); } catch (e) { }
     });
     this.aiOverlayPriceLines = [];
 
@@ -740,36 +877,25 @@ export class ChartViewer {
     const clampedPct = Math.max(20, Math.min(200, pct));
     const defaultLogicalRange = 60;
     const targetBars = Math.round(defaultLogicalRange * (100 / clampedPct));
-    
+
     timeScale.setVisibleLogicalRange({
       from: Math.max(0, this.currentCandles.length - targetBars),
       to: this.currentCandles.length + 5
     });
   }
 
-  setUserAnnotations(annotations) {
-    this.userAnnotationsList = annotations || [];
-    this.renderUserAnnotations();
+  getUserAnnotations() {
+    if (!this.drawingEngine) return [];
+    return this.drawingEngine.getDrawings() || [];
   }
 
-  renderUserAnnotations() {
-    this.annotationSeriesList.forEach(series => {
-      try { this.chart.removeSeries(series); } catch (e) {}
-    });
-    this.annotationSeriesList = [];
-
-    this.userAnnotationsList.forEach(ann => {
-      const series = this.chart.addLineSeries({
-        color: ann.color || '#3b82f6',
-        lineWidth: ann.lineWidth || 2,
-        lineStyle: ann.lineStyle || 0,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        title: ann.title || ''
-      });
-
-      series.setData(ann.points);
-      this.annotationSeriesList.push(series);
-    });
+  setUserAnnotations(annotations) {
+    if (!this.drawingEngine) return;
+    try {
+      this.drawingEngine.drawings = Array.isArray(annotations) ? annotations : [];
+      this.drawingEngine._scheduleRender();
+    } catch (e) {
+      console.warn("Failed to set user annotations", e);
+    }
   }
 }

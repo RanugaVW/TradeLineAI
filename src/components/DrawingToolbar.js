@@ -8,6 +8,7 @@ export class DrawingToolbar {
     this.container = containerElement;
     this.activeTool = 'select';
     this.onToolChange = options.onToolChange || (() => {});
+    this.onFavoriteToggle = options.onFavoriteToggle || (() => {});
     this.onUndo = options.onUndo || (() => {});
     this.onRedo = options.onRedo || (() => {});
     this.onClear = options.onClear || (() => {});
@@ -18,10 +19,12 @@ export class DrawingToolbar {
     this.activeColor = '#2196F3';
     this.activeWidth = 2;
     this.activeStyle = 'solid';
+    this.activeStyle = 'solid';
+    this.favorites = options.favorites || [];
     this.isCollapsed = false;
 
     // Group collapse state
-    this.groupOpen = { lines: true, shapes: false, fib: false, annotations: false };
+    this.groupOpen = { lines: true, shapes: true, fib: true, annotations: true };
 
     this.render();
     this._initKeyboardHints();
@@ -71,6 +74,18 @@ export class DrawingToolbar {
   _refreshActiveState() {
     const btns = this.container.querySelectorAll('.dtb-tool-btn');
     btns.forEach(b => b.classList.toggle('active', b.dataset.tool === this.activeTool));
+    
+    // Also refresh favorite stars
+    const favBtns = this.container.querySelectorAll('.dtb-favorite-btn');
+    favBtns.forEach(btn => {
+      const isFav = this.favorites.includes(btn.dataset.favTool);
+      btn.classList.toggle('is-favorite', isFav);
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
+      }
+      btn.title = isFav ? 'Remove from Favorites' : 'Add to Favorites';
+    });
   }
 
   render() {
@@ -195,14 +210,74 @@ export class DrawingToolbar {
 
   _btn(tool, title, shortcut, svgIcon) {
     const sc = shortcut ? `<span class="dtb-shortcut">${shortcut}</span>` : '';
+    const isFav = this.favorites.includes(tool);
     return `
-      <button class="dtb-tool-btn ${this.activeTool === tool ? 'active' : ''}"
-              data-tool="${tool}"
-              title="${title}${shortcut ? ' (' + shortcut + ')' : ''}">
-        ${svgIcon}
-        ${sc}
-      </button>
+      <div class="dtb-tool-wrapper">
+        <button class="dtb-tool-btn ${this.activeTool === tool ? 'active' : ''}"
+                data-tool="${tool}"
+                title="${title}${shortcut ? ' (' + shortcut + ')' : ''}">
+          ${svgIcon}
+          ${sc}
+        </button>
+        <button class="dtb-favorite-btn ${isFav ? 'is-favorite' : ''}" data-fav-tool="${tool}" title="${isFav ? 'Remove from Favorites' : 'Add to Favorites'}">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+        </button>
+      </div>
     `;
+  }
+
+  getToolSVG(toolId) {
+    const map = {
+      'trendline': this._svg_trendline(),
+      'extended-line': this._svg_extended(),
+      'ray': this._svg_ray(),
+      'horizontal': this._svg_horizontal(),
+      'vertical': this._svg_vertical(),
+      'channel': this._svg_channel(),
+      'pitchfork': this._svg_pitchfork(),
+      'zone': this._svg_zone(),
+      'triangle': this._svg_triangle(),
+      'ellipse': this._svg_ellipse(),
+      'fib': this._svg_fib(),
+      'fib-ext': this._svg_fib_ext(),
+      'fib-fan': this._svg_fib_fan(),
+      'fib-time': this._svg_fib_time(),
+      'text': this._svg_text(),
+      'callout': this._svg_callout(),
+      'note': this._svg_note(),
+      'measure': this._svg_measure(),
+      'long': this._svg_long(),
+      'short': this._svg_short(),
+    };
+    return map[toolId] || '';
+  }
+
+  getToolTitle(toolId) {
+     const map = {
+        'trendline': 'Trend Line',
+        'extended-line': 'Extended Line',
+        'ray': 'Ray',
+        'horizontal': 'Horizontal Line',
+        'vertical': 'Vertical Line',
+        'channel': 'Parallel Channel',
+        'pitchfork': 'Pitchfork',
+        'zone': 'Rectangle / Zone',
+        'triangle': 'Triangle',
+        'ellipse': 'Ellipse',
+        'fib': 'Fib Retracement',
+        'fib-ext': 'Fib Extension',
+        'fib-fan': 'Fib Fan',
+        'fib-time': 'Fib Time Zones',
+        'text': 'Text Label',
+        'callout': 'Callout Arrow',
+        'note': 'Anchored Note',
+        'measure': 'Price Measure',
+        'long': 'Long Position',
+        'short': 'Short Position',
+     };
+     return map[toolId] || toolId;
   }
 
   _attachEvents() {
@@ -212,6 +287,15 @@ export class DrawingToolbar {
         this.activeTool = btn.dataset.tool;
         this._refreshActiveState();
         this.onToolChange(this.activeTool);
+      });
+    });
+
+    // Favorite buttons
+    this.container.querySelectorAll('.dtb-favorite-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tool = btn.dataset.favTool;
+        this.onFavoriteToggle(tool);
       });
     });
 

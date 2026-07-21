@@ -6,6 +6,7 @@ import { ControlsBar } from './components/ControlsBar.js';
 import { AnalyticsPanel } from './components/AnalyticsPanel.js';
 import { AuthModal } from './components/AuthModal.js';
 import { DrawingToolbar } from './components/DrawingToolbar.js';
+import { FavoritesToolbar } from './components/FavoritesToolbar.js';
 import { AdminPanel } from './components/AdminPanel.js';
 import { AITradePanel } from './components/AITradePanel.js';
 import { supabase, getCurrentSession, fetchUserProfile, saveUserAnnotations, loadUserAnnotations, subscribeToProfileChanges, subscribeToAnnotationChanges } from './api/supabaseClient.js';
@@ -17,6 +18,7 @@ class App {
     this.analyticsPanel = null;
     this.authModal = null;
     this.drawingToolbar = null;
+    this.favoritesToolbar = null;
     this.adminPanel = null;
     this.aiTradePanel = null;
 
@@ -107,10 +109,33 @@ class App {
       onOpenAdmin: () => this.adminPanel.open()
     });
 
-    // 4. Initialize Drawing Toolbar Sidebar
+    // 4. Initialize Drawing Toolbar Sidebar & Favorites
+    let savedFavorites = [];
+    try {
+      const favStr = localStorage.getItem('tradeLine_favorites');
+      if (favStr) savedFavorites = JSON.parse(favStr);
+    } catch (e) { console.warn('Failed to load favorites'); }
+
     this.drawingToolbar = new DrawingToolbar(drawingElem, {
+      favorites: savedFavorites,
+      onFavoriteToggle: (tool) => {
+        if (savedFavorites.includes(tool)) {
+          savedFavorites = savedFavorites.filter(t => t !== tool);
+        } else {
+          savedFavorites.push(tool);
+        }
+        localStorage.setItem('tradeLine_favorites', JSON.stringify(savedFavorites));
+        this.drawingToolbar.favorites = savedFavorites;
+        this.drawingToolbar._refreshActiveState(); // To update star buttons
+        
+        // Update Floating Panel
+        if (this.favoritesToolbar) {
+          this.favoritesToolbar.setFavorites(savedFavorites);
+        }
+      },
       onToolChange: (tool) => {
         this.chartViewer.setDrawingTool(tool);
+        if (this.favoritesToolbar) this.favoritesToolbar.setActiveTool(tool);
       },
       onUndo: () => this.chartViewer.undoDrawing(),
       onRedo: () => this.chartViewer.redoDrawing(),
@@ -120,9 +145,83 @@ class App {
       onStyleChange: (s) => this.chartViewer.setDrawingStyle(s),
     });
 
+    // 4.1 Custom Sidebar Resizer
+    const resizer = document.createElement('div');
+    resizer.className = 'sidebar-resizer';
+    drawingElem.appendChild(resizer);
+
+    let isResizing = false;
+    
+    // Load saved width
+    try {
+      const savedWidth = localStorage.getItem('tradeLine_sidebar_width');
+      if (savedWidth) {
+        drawingElem.style.width = savedWidth;
+      }
+    } catch (e) {}
+
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      resizer.classList.add('is-resizing');
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault(); // Prevent text selection
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const rect = drawingElem.getBoundingClientRect();
+      const newWidth = e.clientX - rect.left;
+      
+      // Enforce min/max widths (matches CSS)
+      if (newWidth >= 60 && newWidth <= 250) {
+        drawingElem.style.width = `${newWidth}px`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        resizer.classList.remove('is-resizing');
+        document.body.style.cursor = '';
+        
+        // Save width to localStorage
+        try {
+          localStorage.setItem('tradeLine_sidebar_width', drawingElem.style.width);
+        } catch (e) {}
+        
+        // Trigger chart resize
+        window.dispatchEvent(new Event('resize'));
+      }
+    });
+
+    // Build tools map for favorites toolbar
+    const toolsMap = {};
+    const allToolIds = [
+      'trendline', 'extended-line', 'ray', 'horizontal', 'vertical', 'channel', 'pitchfork',
+      'zone', 'triangle', 'ellipse',
+      'fib', 'fib-ext', 'fib-fan', 'fib-time',
+      'text', 'callout', 'note', 'measure', 'long', 'short'
+    ];
+    allToolIds.forEach(id => {
+      toolsMap[id] = {
+        title: this.drawingToolbar.getToolTitle(id),
+        svg: this.drawingToolbar.getToolSVG(id)
+      };
+    });
+
+    this.favoritesToolbar = new FavoritesToolbar({
+      favorites: savedFavorites,
+      toolsMap: toolsMap,
+      onToolChange: (tool) => {
+        this.drawingToolbar.setActiveTool(tool);
+        this.chartViewer.setDrawingTool(tool);
+      }
+    });
+
     // Keep toolbar in sync when tool is changed via keyboard shortcut inside DrawingEngine
     document.addEventListener('drawingToolChange', (e) => {
       this.drawingToolbar?.setActiveTool(e.detail.tool);
+      this.favoritesToolbar?.setActiveTool(e.detail.tool);
     });
 
     // 5. Initialize Controls Bar
@@ -162,15 +261,38 @@ class App {
     setInterval(() => {
       this.loadAndAnalyze(false);
     }, 15000);
+
+    // 10. Initialize Lucide Icons globally and setup a global refresh function
+    window.refreshIcons = () => {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    };
+    
+    // Create an observer to automatically inject icons when DOM changes
+    const observer = new MutationObserver((mutationsList, obs) => {
+      // Disconnect temporarily to avoid infinite loop when createIcons modifies the DOM
+      obs.disconnect();
+      window.refreshIcons();
+      // Reconnect observer
+      obs.observe(document.body, { childList: true, subtree: true });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    window.refreshIcons();
   }
 
   updateLockScreenState() {
     const lockOverlay = document.getElementById('auth-lock-overlay');
     const appElem = document.getElementById('app');
 
-    // Never block page refresh or hide charts for guest users
-    appElem?.classList.remove('logged-out-mode');
-    lockOverlay?.classList.add('hidden');
+    if (!this.currentUser) {
+      appElem?.classList.add('logged-out-mode');
+      lockOverlay?.classList.remove('hidden');
+    } else {
+      appElem?.classList.remove('logged-out-mode');
+      lockOverlay?.classList.add('hidden');
+    }
   }
 
   async checkAuthSession() {
@@ -252,6 +374,11 @@ class App {
     const tfChanged = this.lastTf !== state.timeframe;
     this.lastSymbol = state.symbol;
     this.lastTf = state.timeframe;
+    
+    if (this.chartViewer.showLabels !== state.showLabels) {
+      this.chartViewer.showLabels = state.showLabels;
+      this.chartViewer.combineAndSetMarkers();
+    }
 
     // Save drawings for old symbol, load for new one
     if (symbolChanged) {
@@ -264,8 +391,22 @@ class App {
   async loadSavedAnnotations() {
     if (this.currentUser && this.userProfile.role !== 'free') {
       const symbol = this.controlsBar.state.symbol;
+      const cacheKey = `annotations_${this.currentUser.id}_${symbol}`;
+      
+      // 1. FAST PATH: Load from localStorage instantly
+      try {
+        const localCache = localStorage.getItem(cacheKey);
+        if (localCache) {
+          this.chartViewer.setUserAnnotations(JSON.parse(localCache));
+        }
+      } catch(e) { console.warn('Local cache read failed'); }
+
+      // 2. BACKGROUND FETCH: Get truth from cloud
       const savedDrawings = await loadUserAnnotations(this.currentUser.id, symbol);
+      
+      // 3. UPDATE: Render cloud truth and save to local cache
       this.chartViewer.setUserAnnotations(savedDrawings);
+      localStorage.setItem(cacheKey, JSON.stringify(savedDrawings));
     }
   }
 
@@ -290,10 +431,22 @@ class App {
     try {
       const symbol = this.controlsBar.state.symbol;
       const annotations = this.chartViewer.getUserAnnotations();
-      await saveUserAnnotations(this.currentUser.id, symbol, annotations);
-      if (showAlert) alert(`Successfully saved annotations for ${symbol} to your cloud account!`);
+      const cacheKey = `annotations_${this.currentUser.id}_${symbol}`;
+      
+      // INSTANT LOCAL SAVE for snappy UX
+      localStorage.setItem(cacheKey, JSON.stringify(annotations));
+
+      // BACKGROUND CLOUD SAVE
+      // We don't await this if auto-saving to prevent blocking the UI
+      const savePromise = saveUserAnnotations(this.currentUser.id, symbol, annotations);
+      
+      if (showAlert) {
+        await savePromise; // wait only if we need to show an alert
+        alert(`Successfully saved annotations for ${symbol} to your cloud account!`);
+      }
     } catch (err) {
-      alert(`Save annotations failed: ${err.message}`);
+      if (showAlert) alert(`Save annotations failed: ${err.message}`);
+      console.error('Annotation save error:', err);
     }
   }
 

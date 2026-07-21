@@ -15,7 +15,7 @@ export class AITradePanel {
   constructor(containerElement, options = {}) {
     this.container = containerElement;
     this.isOpen = false;
-    this.isClosed = false;
+    this.isClosed = true;
     this.lkrBudget = 100000;
     this.liveRate = 305.0;
     this.tradeDuration = 'Day Trade (1 - 24h)';
@@ -23,6 +23,7 @@ export class AITradePanel {
     this.aiData = null;
     this.isLoading = false;
     this.errorMsg = null;
+    this.userContext = '';
 
     const modalOverlay = document.getElementById('ai-modal-overlay');
     this.modal = modalOverlay ? new AITradeModal(modalOverlay) : null;
@@ -52,14 +53,11 @@ export class AITradePanel {
   }
 
   toggleDrawer() {
-    this.isOpen = !this.isOpen;
-    this.render();
-    if (this.onTogglePanel) {
-      this.onTogglePanel();
+    if (this.isOpen) {
+      this.closePanel();
+    } else {
+      this.openPanel();
     }
-    setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 60);
   }
 
   closePanel() {
@@ -101,7 +99,7 @@ export class AITradePanel {
       floatBtn.id = 'reopen-ai-floating-btn';
       floatBtn.className = 'reopen-ai-floating-btn';
       floatBtn.title = 'Re-open AI Trade Advisor';
-      floatBtn.innerHTML = '🤖 Open AI Advisor ▼';
+      floatBtn.innerHTML = '<i data-lucide="bot"></i> Open AI Advisor <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>';
       floatBtn.addEventListener('click', () => this.openPanel());
       
       document.getElementById('app').appendChild(floatBtn);
@@ -117,14 +115,14 @@ export class AITradePanel {
         <!-- Trigger Header Bar -->
         <div class="ai-drawer-trigger-bar" id="ai-drawer-trigger">
           <div class="trigger-left">
-            <span class="ai-sparkle-icon">🤖</span>
+            <span class="ai-sparkle-icon"><i data-lucide="sparkles"></i></span>
             <span class="trigger-title">TradeLine AI Market Trade Advisor & LKR Optimizer</span>
             <span class="trigger-badge">${this.aiData ? `${this.aiData.signal} (${this.aiData.confidence}%)` : 'Interactive AI Tool'}</span>
           </div>
 
           <div class="trigger-right">
             <span class="trigger-sub">${this.isOpen ? 'Click to Close Panel' : 'Click to Open AI Trade Calculator & Signals'}</span>
-            <span class="drawer-arrow">${this.isOpen ? '▲' : '▼'}</span>
+            <span class="drawer-arrow">${this.isOpen ? '<i data-lucide="chevron-up"></i>' : '<i data-lucide="chevron-down"></i>'}</span>
             <button type="button" class="close-ai-panel-btn" id="close-ai-panel-btn" title="Hide AI Trade Advisor completely">✕</button>
           </div>
         </div>
@@ -161,12 +159,26 @@ export class AITradePanel {
                   Trading Time Horizon:
                 </label>
                 <select id="trade-duration-select" class="custom-select-full">
-                  <option value="Scalp (15m - 1h)" ${this.tradeDuration.includes('Scalp') ? 'selected' : ''}>⚡ Scalp (15m - 1h)</option>
-                  <option value="Day Trade (1 - 24h)" ${this.tradeDuration.includes('Day Trade') ? 'selected' : ''}>📈 Day Trade (1 - 24h)</option>
-                  <option value="Swing Trade (1 - 7d)" ${this.tradeDuration.includes('Swing') ? 'selected' : ''}>📊 Swing Trade (1 - 7d)</option>
-                  <option value="Position Trade (1w+)" ${this.tradeDuration.includes('Position') ? 'selected' : ''}>🚀 Position Trade (1w+)</option>
+                  <option value="Scalp (15m - 1h)" ${this.tradeDuration.includes('Scalp') ? 'selected' : ''}>Scalp (15m - 1h)</option>
+                  <option value="Day Trade (1 - 24h)" ${this.tradeDuration.includes('Day Trade') ? 'selected' : ''}>Day Trade (1 - 24h)</option>
+                  <option value="Swing Trade (1 - 7d)" ${this.tradeDuration.includes('Swing') ? 'selected' : ''}>Swing Trade (1 - 7d)</option>
+                  <option value="Position Trade (1w+)" ${this.tradeDuration.includes('Position') ? 'selected' : ''}>Position Trade (1w+)</option>
                 </select>
                 <small class="field-hint">Adjusts Gemini AI reasoning and S/R bounce timeframe focus</small>
+              </div>
+
+              <div class="input-field-group">
+                <label for="ai-manual-context" class="field-label">
+                  Additional Market Context & News (Optional):
+                </label>
+                <textarea 
+                  id="ai-manual-context" 
+                  class="custom-textarea" 
+                  rows="3" 
+                  placeholder="e.g., 'Fed announced rate cuts today', 'Bitcoin ETF approved'"
+                  style="width: 100%; background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); padding: 8px; border-radius: 6px; resize: vertical; font-family: inherit; font-size: 13px; margin-top: 5px;"
+                >${this.userContext || ''}</textarea>
+                <small class="field-hint">Gemini AI will combine this fundamental context with the quantitative chart patterns.</small>
               </div>
 
               <button type="button" id="generate-ai-btn" class="generate-ai-btn ${this.isLoading ? 'loading' : ''}">
@@ -176,7 +188,7 @@ export class AITradePanel {
 
             <!-- Right Results Display Card -->
             <div class="ai-results-card">
-              <h4 class="card-section-title">📊 TradeLine AI Output & Allocation</h4>
+              <h4 class="card-section-title"><i data-lucide="bar-chart-2"></i> TradeLine AI Output & Allocation</h4>
 
               <div id="ai-output-container" class="ai-output-container">
                 ${this.isLoading ? `
@@ -234,16 +246,16 @@ export class AITradePanel {
                     <div class="ai-action-bar-stacked">
                       <div class="ai-action-bar-top-row">
                         <button type="button" id="apply-ai-overlay-btn" class="ai-overlay-btn apply-btn" title="Apply AI trade plan arrows, WE ARE HERE pointer, and target TP lines directly to your main TradingView chart">
-                          📌 Apply AI Diagram to Main Chart
+                          <i data-lucide="pin"></i> Apply AI Diagram to Main Chart
                         </button>
 
                         <button type="button" id="reset-ai-overlay-btn" class="ai-overlay-btn reset-btn" title="Clear AI arrows, target lines, and markers from the main chart">
-                          ↺ Reset AI
+                          <i data-lucide="rotate-ccw"></i> Reset AI
                         </button>
                       </div>
 
                       <button type="button" id="open-ai-modal-btn" class="open-ai-modal-btn" title="Open AI Focused Deep Analysis Modal">
-                        🔍 Open AI Focused Chart & Deep Analysis Modal
+                        <i data-lucide="search"></i> Open AI Focused Chart & Deep Analysis Modal
                       </button>
                     </div>
                   </div>
@@ -291,6 +303,11 @@ export class AITradePanel {
       this.tradeDuration = e.target.value;
     });
 
+    const contextInput = this.container.querySelector('#ai-manual-context');
+    contextInput?.addEventListener('input', (e) => {
+      this.userContext = e.target.value;
+    });
+
     const generateBtn = this.container.querySelector('#generate-ai-btn');
     generateBtn?.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -304,7 +321,7 @@ export class AITradePanel {
       this.render();
 
       try {
-        const result = await fetchGeminiTradeSuggestion(this.marketContext, this.lkrBudget, this.tradeDuration);
+        const result = await fetchGeminiTradeSuggestion(this.marketContext, this.lkrBudget, this.tradeDuration, this.userContext);
         this.aiData = result;
         this.errorMsg = null;
 

@@ -52,7 +52,7 @@ export async function getLiveUsdToLkr() {
   return cachedLkrRate; // Safe fallback
 }
 
-export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 100000, tradeDuration = 'Day Trade (1 - 24h)') {
+export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 100000, tradeDuration = 'Day Trade (1 - 24h)', userContext = '') {
   const { 
     symbol, 
     currentPrice, 
@@ -66,6 +66,11 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
   const usdBudget = lkrBudget / usdToLkr;
 
   // --- Build rich pattern context strings ---
+  
+  // AI Predictor Confluence
+  const aiPrediction = patterns?.prediction
+    ? `Predicted Direction: ${patterns.prediction.direction} | Probability: ${patterns.prediction.probability}%\n  Confluence Score: ${patterns.prediction.score}\n  Driving Factors: ${patterns.prediction.reasons.join(', ')}`
+    : 'No clear prediction generated';
 
   // Candlestick Patterns (last 10, with prices and bias)
   const detectedCandles = patterns?.candlestickPatterns?.length > 0
@@ -117,7 +122,7 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
       `0.236: $${fib.levels?.fib236} | 0.382: $${fib.levels?.fib382} | 0.500: $${fib.levels?.fib500}`,
       `0.618 (Golden Pocket Top): $${fib.levels?.fib618} | 0.650 (GP Bottom): $${fib.levels?.fib650}`,
       `0.786: $${fib.levels?.fib786}`,
-      `Golden Pocket Status: ${gp?.isActive ? `✅ ACTIVE — Price $${currentPrice} is inside GP zone ($${gp.bottom}–$${gp.top})` : `❌ NOT IN GOLDEN POCKET`}`
+      `Golden Pocket Status: ${gp?.isActive ? `[ACTIVE] — Price $${currentPrice} is inside GP zone ($${gp.bottom}–$${gp.top})` : `[NOT IN GOLDEN POCKET]`}`
     ].join('\n  ');
   }
 
@@ -125,6 +130,10 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
   const detectedChartPats = patterns?.chartPatterns?.length > 0
     ? patterns.chartPatterns.map(cp => `${cp.name} [${cp.type}]: ${cp.desc}`).join(' | ')
     : 'None detected';
+
+  const userContextSection = userContext && userContext.trim() !== ''
+    ? `\n=== [CRITICAL] USER PROVIDED FUNDAMENTALS & NEWS ===\n${userContext.trim()}\n\n(CRITICAL INSTRUCTION: The user has manually provided this fundamental context. You MUST heavily weigh these fundamental factors alongside the technical data below to form your final analysis!)\n`
+    : '';
 
   let apiKey = '';
   try {
@@ -139,12 +148,16 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
 
   const promptText = `
 You are an expert quantitative crypto trader and pattern recognition specialist analyzing live automated chart scan results.
-
+${userContextSection}
 === MARKET OVERVIEW ===
 Symbol: ${symbol}
 Current Price: $${currentPrice} USD
 Trader Budget: LKR ${lkrBudget.toLocaleString()} ≈ $${usdBudget.toFixed(2)} USD (1 USD = ${usdToLkr.toFixed(2)} LKR)
 Trading Horizon: ${tradeDuration}
+
+=== AUTOMATED AI CONFLUENCE ENGINE ===
+▸ AI Next Move Predictor Result:
+  ${aiPrediction}
 
 === SUPPORT & RESISTANCE LEVELS ===
 Key Support Floors:    ${supportLines.slice(0, 5).map(s => `$${s.price.toFixed(4)} (${s.bounces}x bounces)`).join(', ') || 'None'}

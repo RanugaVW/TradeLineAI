@@ -28,13 +28,117 @@ export function detectAllPatterns(candles, options = {}) {
   const fibonacci = calculateFibonacciLevels(candles, marketStructure.pivots);
   const chartPatterns = detectChartPatterns(candles, marketStructure.pivots);
 
+  const prediction = predictNextMove({
+    candlestickPatterns,
+    marketStructure,
+    indicators,
+    chartPatterns
+  });
+
   return {
     candlestickPatterns,
     marketStructure,
     indicators,
     divergences,
     fibonacci,
-    chartPatterns
+    chartPatterns,
+    prediction
+  };
+}
+
+/**
+ * AI Next Move Predictor (Aggregator)
+ */
+function predictNextMove(analysisData) {
+  let score = 0;
+  const reasons = [];
+
+  const ms = analysisData.marketStructure;
+  const ind = analysisData.indicators;
+  const candles = analysisData.candlestickPatterns || [];
+  const cp = analysisData.chartPatterns || [];
+
+  // Trend
+  if (ms.current_trend === 'UPTREND') {
+    score += 10;
+    reasons.push("Uptrend intact (+10)");
+  } else if (ms.current_trend === 'DOWNTREND') {
+    score -= 10;
+    reasons.push("Downtrend intact (-10)");
+  }
+
+  // CHoCH (very strong signal if recent)
+  if (ms.chochEvents && ms.chochEvents.length > 0) {
+    const lastChoch = ms.chochEvents[ms.chochEvents.length - 1];
+    if (lastChoch.type === 'BULLISH_CHOCH') {
+      score += 15;
+      reasons.push("Recent Bullish CHoCH (+15)");
+    } else {
+      score -= 15;
+      reasons.push("Recent Bearish CHoCH (-15)");
+    }
+  }
+
+  // Candlesticks (last 2 patterns found)
+  const recentCandles = candles.slice(-2);
+  for (const c of recentCandles) {
+    if (c.type === 'BULLISH') {
+      score += 8;
+      reasons.push(`Bullish ${c.name} (+8)`);
+    } else if (c.type === 'BEARISH') {
+      score -= 8;
+      reasons.push(`Bearish ${c.name} (-8)`);
+    }
+  }
+
+  // Active Chart Patterns
+  const recentCp = cp.slice(-1);
+  for (const p of recentCp) {
+      if (p.type === 'BULLISH') {
+          score += 20;
+          reasons.push(`Bullish ${p.name} (+20)`);
+      } else {
+          score -= 20;
+          reasons.push(`Bearish ${p.name} (-20)`);
+      }
+  }
+
+  // RSI Momentum
+  if (ind && ind.rsi) {
+    if (ind.rsi < 30) {
+      score += 5;
+      reasons.push(`RSI Oversold (${ind.rsi}) (+5)`);
+    } else if (ind.rsi > 70) {
+      score -= 5;
+      reasons.push(`RSI Overbought (${ind.rsi}) (-5)`);
+    }
+  }
+
+  // Probability Calculation
+  const absScore = Math.abs(score);
+  let probability = 50;
+  if (absScore <= 10) {
+    probability = 50;
+  } else if (absScore <= 25) {
+    probability = 55 + (absScore - 10) * (10 / 15);
+  } else if (absScore <= 45) {
+    probability = 65 + (absScore - 25) * (15 / 20);
+  } else {
+    probability = 80 + (absScore - 45);
+    if (probability > 95) probability = 95; // Capped at 95% max
+  }
+  
+  probability = Math.round(probability);
+
+  let direction = 'NEUTRAL';
+  if (score > 10) direction = 'UP';
+  else if (score < -10) direction = 'DOWN';
+
+  return {
+    direction,
+    score,
+    probability,
+    reasons
   };
 }
 
@@ -832,52 +936,125 @@ function detectMarketStructure(candles, lookbackWindow = 3) {
     }
   }
 
-  // Detect BOS (Break of Structure) & CHoCH (Change of Character)
-  let currentTrend = 'NEUTRAL';
-  let lastPivotHigh = null;
-  let lastPivotLow = null;
-
-  for (let i = 0; i < pivots.length; i++) {
-    const p = pivots[i];
+  // Label Pivots: HH, HL, LH, LL
+  let lastHigh = null;
+  let lastLow = null;
+  for (let p of pivots) {
     if (p.type === 'HIGH') {
-      if (lastPivotHigh && p.price > lastPivotHigh.price) {
-        currentTrend = 'UP';
-        bosEvents.push({
-          type: 'BULLISH_BOS',
-          price: p.price,
-          time: p.time,
-          desc: `Bullish BOS: Price broke higher high at $${p.price.toFixed(4)}`
-        });
-      } else if (lastPivotHigh && p.price < lastPivotHigh.price && currentTrend === 'UP') {
-        chochEvents.push({
-          type: 'BEARISH_CHOCH',
-          price: p.price,
-          time: p.time,
-          desc: `Bearish CHoCH: Market structure shift to downside at $${p.price.toFixed(4)}`
-        });
-        currentTrend = 'DOWN';
-      }
-      lastPivotHigh = p;
-    } else if (p.type === 'LOW') {
-      if (lastPivotLow && p.price < lastPivotLow.price) {
-        currentTrend = 'DOWN';
-        bosEvents.push({
-          type: 'BEARISH_BOS',
-          price: p.price,
-          time: p.time,
-          desc: `Bearish BOS: Price broke lower low at $${p.price.toFixed(4)}`
-        });
-      } else if (lastPivotLow && p.price > lastPivotLow.price && currentTrend === 'DOWN') {
-        chochEvents.push({
-          type: 'BULLISH_CHOCH',
-          price: p.price,
-          time: p.time,
-          desc: `Bullish CHoCH: Market structure shift to upside at $${p.price.toFixed(4)}`
-        });
-        currentTrend = 'UP';
-      }
-      lastPivotLow = p;
+      p.label = (lastHigh && p.price > lastHigh.price) ? 'HH' : 'LH';
+      lastHigh = p;
+    } else {
+      p.label = (lastLow && p.price > lastLow.price) ? 'HL' : 'LL';
+      lastLow = p;
     }
+  }
+
+  // Detect BOS and CHoCH strictly by candle closes beyond the pivot level
+  let currentTrend = 'UPTREND'; // Default starting assumption
+  let lastBos = null;
+  let lastChoch = null;
+  let structureIntact = true;
+  
+  let currentSwingHigh = null;
+  let currentSwingLow = null;
+
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    
+    // Check if the current candle forms a new pivot
+    const pivotAtCandle = pivots.find(p => p.index === i);
+    if (pivotAtCandle) {
+        if (pivotAtCandle.type === 'HIGH') currentSwingHigh = pivotAtCandle;
+        if (pivotAtCandle.type === 'LOW') currentSwingLow = pivotAtCandle;
+    }
+
+    // BOS / CHoCH checks
+    if (currentTrend === 'UPTREND') {
+      // BOS = close above most recent High
+      if (currentSwingHigh && c.close > currentSwingHigh.price && (!lastBos || c.time > currentSwingHigh.time)) {
+        const isNew = !bosEvents.find(e => e.level === currentSwingHigh.price);
+        if (isNew) {
+           lastBos = { type: 'BULLISH_BOS', level: currentSwingHigh.price, price: currentSwingHigh.price, time: c.time, desc: `BOS: $${currentSwingHigh.price.toFixed(4)}` };
+           bosEvents.push(lastBos);
+           structureIntact = true;
+        }
+      }
+      // CHoCH = close below most recent Low
+      if (currentSwingLow && c.close < currentSwingLow.price && (!lastChoch || c.time > currentSwingLow.time)) {
+        const isNew = !chochEvents.find(e => e.level === currentSwingLow.price);
+        if (isNew) {
+           lastChoch = { type: 'BEARISH_CHOCH', level: currentSwingLow.price, price: currentSwingLow.price, time: c.time, desc: `CHoCH: $${currentSwingLow.price.toFixed(4)}` };
+           chochEvents.push(lastChoch);
+           currentTrend = 'DOWNTREND';
+           structureIntact = false;
+        }
+      }
+    } else {
+      // DOWNTREND
+      // BOS = close below most recent Low
+      if (currentSwingLow && c.close < currentSwingLow.price && (!lastBos || c.time > currentSwingLow.time)) {
+        const isNew = !bosEvents.find(e => e.level === currentSwingLow.price);
+        if (isNew) {
+           lastBos = { type: 'BEARISH_BOS', level: currentSwingLow.price, price: currentSwingLow.price, time: c.time, desc: `BOS: $${currentSwingLow.price.toFixed(4)}` };
+           bosEvents.push(lastBos);
+           structureIntact = true;
+        }
+      }
+      // CHoCH = close above most recent High
+      if (currentSwingHigh && c.close > currentSwingHigh.price && (!lastChoch || c.time > currentSwingHigh.time)) {
+        const isNew = !chochEvents.find(e => e.level === currentSwingHigh.price);
+        if (isNew) {
+           lastChoch = { type: 'BULLISH_CHOCH', level: currentSwingHigh.price, price: currentSwingHigh.price, time: c.time, desc: `CHoCH: $${currentSwingHigh.price.toFixed(4)}` };
+           chochEvents.push(lastChoch);
+           currentTrend = 'UPTREND';
+           structureIntact = false;
+        }
+      }
+    }
+  }
+
+  // Active trendline projection
+  let activeTrendline = null;
+  const recentHighs = pivots.filter(p => p.type === 'HIGH').slice(-3);
+  const recentLows = pivots.filter(p => p.type === 'LOW').slice(-3);
+  
+  function linearFit(points) {
+    if (points.length < 2) return null;
+    const n = points.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    for (let i = 0; i < n; i++) {
+      sumX += points[i].index;
+      sumY += points[i].price;
+      sumXY += points[i].index * points[i].price;
+      sumXX += points[i].index * points[i].index;
+    }
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    return { slope, intercept };
+  }
+
+  if (currentTrend === 'UPTREND' && recentLows.length >= 2) {
+     const fit = linearFit(recentLows);
+     if (fit && fit.slope > 0) {
+       activeTrendline = {
+         type: 'SUPPORT',
+         touches: recentLows.length,
+         ...fit,
+         lastIndex: recentLows[recentLows.length-1].index,
+         points: recentLows
+       };
+     }
+  } else if (currentTrend === 'DOWNTREND' && recentHighs.length >= 2) {
+     const fit = linearFit(recentHighs);
+     if (fit && fit.slope < 0) {
+       activeTrendline = {
+         type: 'RESISTANCE',
+         touches: recentHighs.length,
+         ...fit,
+         lastIndex: recentHighs[recentHighs.length-1].index,
+         points: recentHighs
+       };
+     }
   }
 
   // Detect Fair Value Gaps (FVG) / Imbalances (3-candle gap)
@@ -885,32 +1062,16 @@ function detectMarketStructure(candles, lookbackWindow = 3) {
     const c1 = candles[i - 2];
     const c3 = candles[i];
 
-    // Bullish FVG (c3.low > c1.high)
     if (c3.low > c1.high) {
       const gapSizePct = ((c3.low - c1.high) / c1.high) * 100;
       if (gapSizePct >= 0.2) {
-        fvgGaps.push({
-          type: 'BULLISH_FVG',
-          high: c3.low,
-          low: c1.high,
-          time: c3.time,
-          gapSizePct: gapSizePct.toFixed(2),
-          desc: `Bullish FVG Imbalance: $${c1.high.toFixed(4)} - $${c3.low.toFixed(4)} (${gapSizePct.toFixed(2)}%)`
-        });
+        fvgGaps.push({ type: 'BULLISH_FVG', high: c3.low, low: c1.high, time: c3.time, gapSizePct: gapSizePct.toFixed(2), desc: `Bullish FVG Imbalance: $${c1.high.toFixed(4)} - $${c3.low.toFixed(4)} (${gapSizePct.toFixed(2)}%)` });
       }
     }
-    // Bearish FVG (c3.high < c1.low)
     else if (c3.high < c1.low) {
       const gapSizePct = ((c1.low - c3.high) / c3.high) * 100;
       if (gapSizePct >= 0.2) {
-        fvgGaps.push({
-          type: 'BEARISH_FVG',
-          high: c1.low,
-          low: c3.high,
-          time: c3.time,
-          gapSizePct: gapSizePct.toFixed(2),
-          desc: `Bearish FVG Imbalance: $${c3.high.toFixed(4)} - $${c1.low.toFixed(4)} (${gapSizePct.toFixed(2)}%)`
-        });
+        fvgGaps.push({ type: 'BEARISH_FVG', high: c1.low, low: c3.high, time: c3.time, gapSizePct: gapSizePct.toFixed(2), desc: `Bearish FVG Imbalance: $${c3.high.toFixed(4)} - $${c1.low.toFixed(4)} (${gapSizePct.toFixed(2)}%)` });
       }
     }
   }
@@ -922,32 +1083,23 @@ function detectMarketStructure(candles, lookbackWindow = 3) {
     const c2 = candles[i - 1];
     const c3 = candles[i];
 
-    // Bullish Order Block (Red candle before 3 strong green candles)
     if (c0.close < c0.open && c1.close > c1.open && c2.close > c2.open && c3.close > c3.open) {
-      orderBlocks.push({
-        type: 'BULLISH_OB',
-        high: c0.high,
-        low: c0.low,
-        time: c0.time,
-        desc: `Bullish Order Block demand zone at $${c0.low.toFixed(4)} - $${c0.high.toFixed(4)}`
-      });
+      orderBlocks.push({ type: 'BULLISH_OB', high: c0.high, low: c0.low, time: c0.time, desc: `Bullish Order Block demand zone at $${c0.low.toFixed(4)} - $${c0.high.toFixed(4)}` });
     }
-    // Bearish Order Block (Green candle before 3 strong red candles)
     else if (c0.close > c0.open && c1.close < c1.open && c2.close < c2.open && c3.close < c3.open) {
-      orderBlocks.push({
-        type: 'BEARISH_OB',
-        high: c0.high,
-        low: c0.low,
-        time: c0.time,
-        desc: `Bearish Order Block supply zone at $${c0.low.toFixed(4)} - $${c0.high.toFixed(4)}`
-      });
+      orderBlocks.push({ type: 'BEARISH_OB', high: c0.high, low: c0.low, time: c0.time, desc: `Bearish Order Block supply zone at $${c0.low.toFixed(4)} - $${c0.high.toFixed(4)}` });
     }
   }
 
   return {
     pivots,
-    bosEvents: bosEvents.slice(-5),
-    chochEvents: chochEvents.slice(-5),
+    bosEvents: bosEvents.slice(-10),
+    chochEvents: chochEvents.slice(-10),
+    current_trend: currentTrend,
+    last_bos: lastBos,
+    last_choch: lastChoch,
+    structure_intact: structureIntact,
+    active_trendline: activeTrendline,
     fvgGaps: fvgGaps.slice(-5),
     orderBlocks: orderBlocks.slice(-5)
   };

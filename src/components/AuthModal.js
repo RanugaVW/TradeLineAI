@@ -71,7 +71,7 @@ export class AuthModal {
           <span class="user-email" title="${this.user.email}">${this.user.email}</span>
           <span class="role-badge ${roleClass}" title="User Tier Plan">${role}</span>
           ${role === 'ADMIN' ? `
-            <button id="admin-panel-btn" class="admin-btn" title="Open Admin Role Management Panel">Admin ⚙️</button>
+            <button id="admin-panel-btn" class="admin-btn" title="Open Admin Role Management Panel"><i data-lucide="settings" style="width: 14px; height: 14px; margin-right: 4px;"></i> Admin</button>
           ` : ''}
           <button id="logout-btn" class="logout-btn" title="Sign Out">Logout</button>
         </div>
@@ -94,8 +94,13 @@ export class AuthModal {
     logoutBtn?.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      await signOutUser();
-      this.onAuthChange(null, { role: 'free' });
+      try {
+        await signOutUser();
+      } catch(err) {
+        console.error("Logout error", err);
+      }
+      // Force a hard reload to guarantee clean state
+      window.location.reload();
     });
 
     const adminBtn = this.container.querySelector('#admin-panel-btn');
@@ -315,7 +320,7 @@ export class AuthModal {
             // Email confirmation required
             errorElem.className = 'auth-success-msg';
             errorElem.innerHTML = `
-              <strong>✉️ Confirmation Email Sent!</strong><br/>
+              <strong><i data-lucide="mail" style="width: 14px; height: 14px; margin-right: 4px;"></i> Confirmation Email Sent!</strong><br/>
               A verification link has been sent to <strong>${email}</strong>.<br/>
               Please check your inbox (and spam folder) and click the link to confirm your registration.
             `;

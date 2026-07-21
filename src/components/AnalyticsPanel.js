@@ -78,7 +78,7 @@ export class AnalyticsPanel {
     this.container.innerHTML = `
       <!-- Panel Header with Close Button -->
       <div class="analytics-header-bar">
-        <span class="analytics-header-title">📊 Market Analytics</span>
+        <span class="analytics-header-title"><i data-lucide="bar-chart-2" style="width: 18px; height: 18px; margin-right: 6px;"></i> Market Analytics</span>
         <button type="button" id="close-analytics-btn" class="close-analytics-btn" title="Close / Hide Analytics Panel to expand chart width">
           ◀ Hide Panel
         </button>
@@ -100,15 +100,15 @@ export class AnalyticsPanel {
         <div class="metrics-grid">
           <div class="metric-box support-box" title="Total valid support lines">
             <span class="metric-num text-green">${supportLines.length}</span>
-            <span class="metric-label">Support ⓘ</span>
+            <span class="metric-label">Support <i data-lucide="info" style="width: 12px; height: 12px; margin-left: 2px;"></i></span>
           </div>
           <div class="metric-box resistance-box" title="Total valid resistance lines">
             <span class="metric-num text-red">${resistanceLines.length}</span>
-            <span class="metric-label">Resistance ⓘ</span>
+            <span class="metric-label">Resistance <i data-lucide="info" style="width: 12px; height: 12px; margin-left: 2px;"></i></span>
           </div>
           <div class="metric-box" title="Total OHLCV historical candlestick bars scanned">
             <span class="metric-num text-blue">${candleCount}</span>
-            <span class="metric-label">Candles ⓘ</span>
+            <span class="metric-label">Candles <i data-lucide="info" style="width: 12px; height: 12px; margin-left: 2px;"></i></span>
           </div>
         </div>
       </div>
@@ -116,10 +116,10 @@ export class AnalyticsPanel {
       <!-- Navigation Tabs inside Analytics Side Panel -->
       <div class="analytics-tabs-bar">
         <button type="button" class="analytics-tab-btn ${this.activeTab === 'sr' ? 'active' : ''}" id="tab-btn-sr">
-          📐 Key S/R (${allLines.length})
+          <i data-lucide="layout-grid" style="width: 14px; height: 14px; margin-right: 4px;"></i> Key S/R (${allLines.length})
         </button>
         <button type="button" class="analytics-tab-btn ${this.activeTab === 'patterns' ? 'active' : ''}" id="tab-btn-patterns">
-          ⚡ Auto Patterns (${cPatterns.length + divergences.length + (mStructure.bosEvents?.length || 0)})
+          <i data-lucide="zap" style="width: 14px; height: 14px; margin-right: 4px;"></i> Auto Patterns (${cPatterns.length + divergences.length + (mStructure.bosEvents?.length || 0)})
         </button>
       </div>
 
@@ -135,16 +135,16 @@ export class AnalyticsPanel {
             ${allLines.length === 0 ? `
               <div class="empty-state">
                 <p>No active Support or Resistance lines detected for current view.</p>
-                <small>Click "📐 Support & Resistance Auto-Detector" tab in top bar to enable lines.</small>
+                <small>Click "Support & Resistance Auto-Detector" tab in top bar to enable lines.</small>
               </div>
             ` : `
               <table class="levels-table">
                 <thead>
                   <tr>
-                    <th>Type ⓘ</th>
-                    <th>Price ⓘ</th>
-                    <th>Bounces ⓘ</th>
-                    <th>Distance % ⓘ</th>
+                    <th>Type</th>
+                    <th>Price</th>
+                    <th>Bounces</th>
+                    <th>Distance %</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -168,7 +168,7 @@ export class AnalyticsPanel {
                           ${line.distancePct > 0 ? '+' : ''}${line.distancePct}%
                         </td>
                         <td>
-                          <button type="button" class="focus-line-btn" title="Focus and extend line on chart">🎯 Focus</button>
+                          <button type="button" class="focus-line-btn" title="Focus and extend line on chart"><i data-lucide="crosshair" style="width: 12px; height: 12px;"></i> Focus</button>
                         </td>
                       </tr>
                     `;
@@ -184,13 +184,13 @@ export class AnalyticsPanel {
       ${this.activeTab === 'patterns' ? `
         <div class="panel-card patterns-card">
           <div class="card-header">
-            <h4 class="card-title">⚡ Automated Technical Pattern Engine</h4>
+            <h4 class="card-title"><i data-lucide="cpu" style="width: 16px; height: 16px; margin-right: 6px;"></i> Automated Technical Pattern Engine</h4>
             <span class="badge-info">A-Z System Active</span>
           </div>
 
           <!-- Section A: Live Candlestick Patterns -->
           <div class="pattern-section">
-            <h5 class="section-subtitle">🕯️ Detected Candlestick Patterns</h5>
+            <h5 class="section-subtitle"><i data-lucide="candlestick-chart" style="width: 14px; height: 14px; margin-right: 4px;"></i> Live Candlestick Patterns</h5>
             ${cPatterns.length === 0 ? `
               <p class="section-empty">Scanning for 1-candle, 2-candle, and 3-candle reversal setups...</p>
             ` : `
@@ -209,7 +209,21 @@ export class AnalyticsPanel {
 
           <!-- Section B: Market Structure (BOS, CHoCH, FVG, OB) -->
           <div class="pattern-section">
-            <h5 class="section-subtitle">🏛️ Market Structure & Smart Money</h5>
+            <h5 class="section-subtitle"><i data-lucide="building-2" style="width: 14px; height: 14px; margin-right: 4px;"></i> Market Structure & Smart Money</h5>
+            
+            <div class="structure-status-banner" style="background: var(--bg-tertiary); padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid ${mStructure.structure_intact ? '#10b981' : '#f43f5e'};">
+               <div style="display:flex; justify-content: space-between; align-items: center;">
+                 <span style="font-weight: 600; color: var(--text-primary);">Trend: <span style="color: ${mStructure.current_trend === 'UPTREND' ? '#10b981' : (mStructure.current_trend === 'DOWNTREND' ? '#f43f5e' : 'var(--text-secondary)')};">${mStructure.current_trend || 'NEUTRAL'}</span></span>
+                 <span class="tag-badge" style="background: ${mStructure.structure_intact ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)'}; color: ${mStructure.structure_intact ? '#10b981' : '#f43f5e'}; border: 1px solid ${mStructure.structure_intact ? '#10b981' : '#f43f5e'};">
+                    ${mStructure.structure_intact ? '<i data-lucide="check-circle" style="width: 16px; height: 16px;"></i> STRUCTURE INTACT' : '<i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i> STRUCTURE BROKEN'}
+                 </span>
+               </div>
+               <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px; display: flex; justify-content: space-between;">
+                 <span>Last BOS: ${mStructure.last_bos ? `$${mStructure.last_bos.level.toFixed(4)}` : 'None'}</span>
+                 <span>Last CHoCH: ${mStructure.last_choch ? `$${mStructure.last_choch.level.toFixed(4)}` : 'None'}</span>
+               </div>
+            </div>
+
             <div class="structure-list">
               ${(mStructure.bosEvents || []).map((b, idx) => `
                 <div class="structure-item item-bos clickable-pattern-chip" data-type="bos" data-index="${idx}" style="cursor:pointer;" title="Click to focus on this BOS event!">
@@ -250,7 +264,7 @@ export class AnalyticsPanel {
 
           <!-- Section C: Indicators & Fib Golden Pocket -->
           <div class="pattern-section">
-            <h5 class="section-subtitle">📊 Indicators & Fib Golden Pocket</h5>
+            <h5 class="section-subtitle"><i data-lucide="trending-up" style="width: 14px; height: 14px; margin-right: 4px;"></i> Indicators & Fib Golden Pocket</h5>
             <div class="indicators-summary-grid">
               <div class="ind-card">
                 <span class="ind-lbl">RSI (14)</span>
@@ -275,20 +289,20 @@ export class AnalyticsPanel {
               <div class="ind-card ${fibonacci?.goldenPocket?.isActive ? 'ind-active-gold' : ''}">
                 <span class="ind-lbl">Fib Golden Pocket</span>
                 <span class="ind-val">$${fibonacci?.goldenPocket?.top || 0}</span>
-                <small class="ind-sub">${fibonacci?.goldenPocket?.isActive ? '🎯 INSIDE GOLDEN POCKET (0.618 - 0.65)' : 'Range 0.618 - 0.65'}</small>
+                <small class="ind-sub">${fibonacci?.goldenPocket?.isActive ? 'INSIDE GOLDEN POCKET (0.618 - 0.65)' : 'Range 0.618 - 0.65'}</small>
               </div>
             </div>
 
             ${divergences.map(d => `
               <div class="divergence-alert-box ${d.type.includes('BULL') ? 'alert-bullish' : 'alert-bearish'}">
-                <strong>⚡ ${d.type} DETECTED!</strong>
+                <strong><i data-lucide="zap" style="width: 12px; height: 12px;"></i> ${d.type} DETECTED!</strong>
                 <p>${d.desc}</p>
               </div>
             `).join('')}
 
             <!-- Section D: Detected Chart Patterns (Double Top/Bottom, H&S, Wedges, Triangles, Rectangles) -->
             <div class="pattern-section" style="margin-top: 16px;">
-              <h5 class="section-subtitle">📐 Detected Chart Patterns</h5>
+              <h5 class="section-subtitle"><i data-lucide="activity" style="width: 14px; height: 14px; margin-right: 4px;"></i> Detected Chart Patterns</h5>
               ${chartPats.length === 0 ? `
                 <p class="section-empty">No active geometric chart patterns detected in the selected time period.</p>
               ` : `
@@ -302,7 +316,7 @@ export class AnalyticsPanel {
                            style="cursor:pointer; border-left: 4px solid ${isBull ? '#00e676' : '#ff1744'}; background: rgba(255,255,255,0.02); padding: 10px; margin-bottom: 8px; border-radius: 6px;" 
                            title="Click to focus on this chart pattern!">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
-                          <strong style="color: ${isBull ? '#00e676' : '#ff1744'}; font-size: 11px;">📐 ${cp.name}</strong>
+                          <strong style="color: ${isBull ? '#00e676' : '#ff1744'}; font-size: 11px;">[PATTERN] ${cp.name}</strong>
                           <span class="type-badge ${isBull ? 'badge-sup' : 'badge-res'}" style="font-size: 8px;">
                             ${cp.type} (${Math.round(cp.confidence * 100)}%)
                           </span>

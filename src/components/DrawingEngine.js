@@ -137,6 +137,19 @@ export class DrawingEngine {
     // Global keyboard
     document.addEventListener('keydown', this._onKeyDown.bind(this));
 
+    // Forward wheel events to the underlying lightweight-chart canvas
+    this.container.addEventListener('wheel', (e) => {
+      // If the event target is our SVG overlay, forward it to the canvas
+      if (e.target === this.svgEl || e.target === this.overlayRect) {
+        const canvas = this.container.querySelector('canvas');
+        if (canvas) {
+          // Clone the wheel event and dispatch it on the canvas
+          const clonedEvent = new WheelEvent(e.type, e);
+          canvas.dispatchEvent(clonedEvent);
+        }
+      }
+    }, { passive: false });
+
     // Chart viewport → re-render drawings
     this.chart.timeScale().subscribeVisibleLogicalRangeChange(() => this._scheduleRender());
 

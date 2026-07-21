@@ -53,29 +53,29 @@ export class AITradeModal {
               </div>
 
               <div class="explanation-box">
-                <h4>🔍 Market Reasoning & Support/Resistance Explanation:</h4>
+                <h4><i data-lucide="info" style="width: 16px; height: 16px; margin-right: 6px; display: inline-block; vertical-align: text-bottom;"></i> Market Reasoning & Support/Resistance Explanation:</h4>
                 <p class="explanation-text">"${aiData.analysis}"</p>
               </div>
 
               <!-- Interactive Step-by-Step Position & Target Path -->
               <div class="trade-path-guide">
-                <h4>📍 Trade Pointer & Execution Path:</h4>
+                <h4><i data-lucide="map-pin" style="width: 16px; height: 16px; margin-right: 6px; display: inline-block; vertical-align: text-bottom;"></i> Trade Pointer & Execution Path:</h4>
                 <div class="path-step-card step-current">
-                  <span class="step-icon">📍</span>
+                  <span class="step-icon"><i data-lucide="map-pin" style="width: 20px; height: 20px;"></i></span>
                   <div class="step-text">
                     <strong>1. WE ARE HERE:</strong> Current Live Price is <strong>$${livePrice.toFixed(4)}</strong>.
                   </div>
                 </div>
 
                 <div class="path-step-card step-support">
-                  <span class="step-icon">🛡️</span>
+                  <span class="step-icon"><i data-lucide="shield" style="width: 20px; height: 20px;"></i></span>
                   <div class="step-text">
                     <strong>2. SUPPORT BOUNCE:</strong> Holding above Support Floor at <strong>$${supPrice.toFixed(4)}</strong> (${supBounces}x touches).
                   </div>
                 </div>
 
                 <div class="path-step-card step-target">
-                  <span class="step-icon">🚀</span>
+                  <span class="step-icon"><i data-lucide="target" style="width: 20px; height: 20px;"></i></span>
                   <div class="step-text">
                     <strong>3. TARGET PROFIT (TP):</strong> Target resistance ceiling at <strong>$${aiData.takeProfitPrice.toFixed(4)}</strong> (+$${aiData.potentialProfitUsd} / +LKR ${aiData.potentialProfitLkr.toLocaleString()}).
                   </div>
@@ -83,7 +83,7 @@ export class AITradeModal {
               </div>
 
               <div class="sr-breakdown-list">
-                <h4>🎯 Key Active Support & Resistance Levels:</h4>
+                <h4><i data-lucide="crosshair" style="width: 16px; height: 16px; margin-right: 6px; display: inline-block; vertical-align: text-bottom;"></i> Key Active Support & Resistance Levels:</h4>
                 <div class="sr-items-grid">
                   <div class="sr-item sup-item">
                     <span class="sr-title">Support Floor:</span>
@@ -248,9 +248,9 @@ export class AITradeModal {
           {
             time: lastCandle.time,
             position: 'aboveBar',
-            color: '#00e5ff',
+            color: '#3b82f6',
             shape: 'arrowDown',
-            text: `📍 WE ARE HERE ($${livePrice.toFixed(4)})`
+            text: `WE ARE HERE ($${livePrice.toFixed(4)})`
           }
         ];
 
@@ -262,7 +262,7 @@ export class AITradeModal {
             position: 'belowBar',
             color: '#00e676',
             shape: 'arrowUp',
-            text: `🎯 BUY ENTRY ZONE ($${aiData.entryPrice})`
+            text: `ENTRY ($${aiData.entryPrice})`
           });
         }
 
@@ -277,7 +277,7 @@ export class AITradeModal {
           lineWidth: 2,
           lineStyle: 0,
           axisLabelVisible: true,
-          title: `🛡️ SUP Floor ($${supportLines[0].price.toFixed(4)})`
+          title: `SUPPORT ($${supportLines[0].price.toFixed(4)})`
         });
       }
 
@@ -289,7 +289,7 @@ export class AITradeModal {
           lineWidth: 2,
           lineStyle: 2,
           axisLabelVisible: true,
-          title: `🚀 TARGET TP ($${aiData.takeProfitPrice.toFixed(4)})`
+          title: `ENTRY ($${aiData.entryPrice.toFixed(4)})`
         });
       }
 
@@ -301,7 +301,7 @@ export class AITradeModal {
           lineWidth: 2,
           lineStyle: 2,
           axisLabelVisible: true,
-          title: `🛑 STOP LOSS ($${aiData.stopLossPrice.toFixed(4)})`
+          title: `STOP LOSS ($${aiData.stopLossPrice.toFixed(4)})`
         });
       }
 

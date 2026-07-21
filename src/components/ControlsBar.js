@@ -19,8 +19,9 @@ export class ControlsBar {
       filterMode: 'smart',
       startDate: '',
       endDate: '',
-      showSupport: false, // Default: Clean TradingView chart without lines on launch
-      showResistance: false, // Default: Clean TradingView chart without lines on launch
+      showSupport: false,
+      showResistance: false,
+      showLabels: true, // Default to showing labels
       zoomPct: 100,
       ...options.initialState
     };
@@ -45,11 +46,11 @@ export class ControlsBar {
       <div class="controls-wrapper">
         <!-- Main Mode Tabs: Pure Chart vs Support & Resistance Detector -->
         <div class="mode-tabs-row">
-          <button type="button" class="mode-tab-btn ${!isSRActive ? 'active' : ''}" id="tab-clean-chart" title="View clean TradingView candlestick chart without automated lines">
-            Pure TradingView Chart
+          <button type="button" class="mode-tab-btn ${!isSRActive ? 'active' : ''}" id="tab-chart" title="Standard TradingView Chart View with AI Signals">
+            <i data-lucide="line-chart"></i> Pure TradingView Chart
           </button>
           <button type="button" class="mode-tab-btn ${isSRActive ? 'active' : ''}" id="tab-sr-detector" title="Enable automated Support & Resistance detection and custom time period range filtering">
-            📐 Support & Resistance Auto-Detector
+            <i data-lucide="ruler"></i> Support & Resistance Auto-Detector
           </button>
         </div>
 
@@ -58,7 +59,7 @@ export class ControlsBar {
           <!-- Symbol Picker -->
           <div class="control-group pair-group" title="Select cryptocurrency pair">
             <label class="control-label">
-              Symbol <span class="info-icon" title="Select cryptocurrency pair">ⓘ</span>
+              Symbol <i class="info-icon" data-lucide="info" title="Select cryptocurrency pair"></i>
             </label>
             <div class="select-container">
               <select id="symbol-select" class="custom-select" title="Select cryptocurrency pair">
@@ -75,7 +76,7 @@ export class ControlsBar {
           <div class="control-group timeframe-group" title="Select preset timeframe or enter custom dynamic interval (Minutes, Hours, Days, Months, Years)">
             <label class="control-label">
               Timeframe: <span class="accent-badge" id="current-tf-badge">${this.state.timeframe}</span>
-              <span class="info-icon" title="Select preset timeframe or enter custom dynamic interval (Minutes, Hours, Days, Months, Years)">ⓘ</span>
+              <i class="info-icon" data-lucide="info" title="Select preset timeframe or enter custom dynamic interval"></i>
             </label>
 
             <div class="pill-buttons">
@@ -90,16 +91,12 @@ export class ControlsBar {
             </div>
           </div>
 
-          <!-- Zoom Controls Group -->
-          <div class="control-group zoom-group" title="Interactive chart zoom controls">
-            <label class="control-label">
-              Zoom: <span class="accent-badge" id="zoom-val">${this.state.zoomPct}%</span>
-            </label>
+          <!-- Visibility Controls Group -->
+          <div class="control-group zoom-group" title="Interactive chart controls">
             <div class="zoom-controls">
-              <button type="button" id="zoom-out-btn" class="mini-btn" title="Zoom Out">-</button>
-              <input type="range" id="zoom-slider" min="20" max="200" step="5" value="${this.state.zoomPct}" class="custom-range zoom-range" />
-              <button type="button" id="zoom-in-btn" class="mini-btn" title="Zoom In">+</button>
-              <button type="button" id="zoom-reset-btn" class="mini-btn reset-btn" title="Reset Zoom">Fit</button>
+              <button type="button" id="toggle-labels-btn" class="pill-btn ${this.state.showLabels ? 'active' : ''}" title="Toggle visibility of chart markers and labels" style="margin-right: 10px; padding: 4px 8px; font-size: 11px;">
+                <i data-lucide="${this.state.showLabels ? 'eye' : 'eye-off'}"></i> ${this.state.showLabels ? 'Labels On' : 'Labels Off'}
+              </button>
             </div>
           </div>
         </div>
@@ -111,7 +108,7 @@ export class ControlsBar {
             <div class="control-group datetime-range-group" title="Select custom historical date & clock time range (Year/Month/Day/Hour/Minute). Support & Resistance lines will be calculated strictly within this time period only!">
               <label class="control-label">
                 S/R Time Period Range: <span class="accent-badge" id="range-status-badge">${(this.state.startDate && this.state.endDate) ? 'Filtered Period' : 'Full Chart Range'}</span>
-                <span class="info-icon" title="Select custom historical date & clock time range. Support & Resistance lines will be drawn strictly within this time range!">ⓘ</span>
+                <i class="info-icon" data-lucide="info" title="Select custom historical date & clock time range. Support & Resistance lines will be drawn strictly within this time range!"></i>
               </label>
 
               <div class="datetime-inputs-row">
@@ -126,12 +123,12 @@ export class ControlsBar {
                 </div>
 
                 <button type="button" id="apply-range-btn" class="apply-range-btn" title="Calculate Support & Resistance lines strictly within selected date/time range">
-                  🎯 Apply Range
+                  <i data-lucide="target"></i> Apply Range
                 </button>
 
                 ${(this.state.startDate || this.state.endDate) ? `
                   <button type="button" id="reset-range-btn" class="reset-range-btn" title="Reset date-time range filter">
-                    ↺ Reset Range
+                    <i data-lucide="rotate-ccw"></i> Reset Range
                   </button>
                 ` : ''}
               </div>
@@ -156,12 +153,12 @@ export class ControlsBar {
             <div class="control-group">
               <label class="control-label">
                 Line Filter:
-                <button type="button" id="open-usability-guide-btn" class="guide-link-btn">ⓘ Rules</button>
+                <button type="button" id="open-usability-guide-btn" class="guide-link-btn"><i data-lucide="info" style="width:12px;height:12px;"></i> Rules</button>
               </label>
               <select id="filter-mode-select" class="custom-select mini-select">
                 <option value="smart" ${(this.state.filterMode || 'smart') === 'smart' ? 'selected' : ''}>✨ Smart Pruned (Clean Top 5)</option>
-                <option value="standard" ${this.state.filterMode === 'standard' ? 'selected' : ''}>📊 Standard (All 3+ Bounces)</option>
-                <option value="all" ${this.state.filterMode === 'all' ? 'selected' : ''}>🔍 Show All Raw Lines</option>
+                <option value="standard" ${this.state.filterMode === 'standard' ? 'selected' : ''}>Standard (All 3+ Bounces)</option>
+                <option value="all" ${this.state.filterMode === 'all' ? 'selected' : ''}>Show All Raw Lines</option>
               </select>
             </div>
 
@@ -187,6 +184,9 @@ export class ControlsBar {
     `;
 
     this.attachEvents();
+    if (window.lucide) {
+      window.lucide.createIcons({ root: this.container });
+    }
   }
 
   attachEvents() {
@@ -218,7 +218,7 @@ export class ControlsBar {
     });
 
     // Timeframe buttons
-    const tfButtons = this.container.querySelectorAll('.pill-btn');
+    const tfButtons = this.container.querySelectorAll('.pill-btn:not(#toggle-labels-btn)');
     tfButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -229,6 +229,15 @@ export class ControlsBar {
         if (currentTfBadge) currentTfBadge.textContent = this.state.timeframe;
         this.onChange(this.state);
       });
+    });
+
+    // Toggle labels button
+    const toggleLabelsBtn = this.container.querySelector('#toggle-labels-btn');
+    toggleLabelsBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.state.showLabels = !this.state.showLabels;
+      this.render();
+      this.onChange(this.state);
     });
 
 
@@ -274,7 +283,7 @@ export class ControlsBar {
     const guideBtn = this.container.querySelector('#open-usability-guide-btn');
     guideBtn?.addEventListener('click', (e) => {
       e.preventDefault();
-      alert(`📐 TradeLine AI — Support & Resistance Line Usability Guide\n\n1. Broken Levels: Recent candles closing > 3% past a line invalidate it.\n2. Redundant Clusters: Lines within 2.5% distance are merged.\n3. Interactive Extender: Click/Touch any line on the chart to extend it to the future forecast zone or fold it back!`);
+      alert(`[GUIDE] TradeLine AI — Support & Resistance Line Usability Guide\n\n1. Broken Levels: Recent candles closing > 3% past a line invalidate it.\n2. Redundant Clusters: Lines within 2.5% distance are merged.\n3. Interactive Extender: Click/Touch any line on the chart to extend it to the future forecast zone or fold it back!`);
     });
 
     // Apply Date-Time Range Button Listener
@@ -308,38 +317,5 @@ export class ControlsBar {
       this.onChange(this.state);
     });
 
-    // Zoom Controls
-    const zoomSlider = this.container.querySelector('#zoom-slider');
-    const zoomVal = this.container.querySelector('#zoom-val');
-    const zoomInBtn = this.container.querySelector('#zoom-in-btn');
-    const zoomOutBtn = this.container.querySelector('#zoom-out-btn');
-    const zoomResetBtn = this.container.querySelector('#zoom-reset-btn');
-
-    const updateZoom = (newPct) => {
-      newPct = Math.max(20, Math.min(200, newPct));
-      this.state.zoomPct = newPct;
-      if (zoomSlider) zoomSlider.value = newPct;
-      if (zoomVal) zoomVal.textContent = `${newPct}%`;
-      this.onZoomChange('set', newPct);
-    };
-
-    zoomSlider?.addEventListener('input', (e) => {
-      updateZoom(parseInt(e.target.value, 10));
-    });
-
-    zoomInBtn?.addEventListener('click', () => {
-      updateZoom(this.state.zoomPct + 20);
-      this.onZoomChange('in');
-    });
-
-    zoomOutBtn?.addEventListener('click', () => {
-      updateZoom(this.state.zoomPct - 20);
-      this.onZoomChange('out');
-    });
-
-    zoomResetBtn?.addEventListener('click', () => {
-      updateZoom(100);
-      this.onZoomChange('reset');
-    });
   }
 }
