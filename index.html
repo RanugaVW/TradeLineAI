@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TradeLine AI: Support & Resistance Auto-Analyzer & Market Advisor</title>
-  <meta name="description" content="TradeLine AI: Advanced Crypto Web Portal featuring Support & Resistance Detection, Gemini AI Trade Signals, and LKR Budget Optimization." />
+  <meta name="description"
+    content="TradeLine AI: Advanced Crypto Web Portal featuring Support & Resistance Detection, Gemini AI Trade Signals, and LKR Budget Optimization." />
   <script type="importmap">
   {
     "imports": {
@@ -19,8 +21,9 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="./src/styles/main.css" />
 </head>
+
 <body>
-  <div id="app">
+  <div id="app" class="logged-out-mode">
     <!-- Top Navigation Header -->
     <header class="navbar">
       <div class="brand-container">
@@ -54,9 +57,16 @@
     <!-- Main Dashboard Body -->
     <main class="main-dashboard" id="main-dashboard">
       <!-- Auth Lock Overlay / Landing Page (Blazity Style) -->
-      <div id="auth-lock-overlay" class="auth-lock-overlay hidden">
+      <div id="auth-lock-overlay" class="auth-lock-overlay">
+        <!-- FOUC Preventer Script: Instantly hide landing page if session exists -->
+        <script>
+          if (localStorage.getItem('crypto_portal_session_7d')) {
+            document.getElementById('app').classList.remove('logged-out-mode');
+            document.getElementById('auth-lock-overlay').classList.add('hidden');
+          }
+        </script>
         <div class="blazity-landing">
-          
+
           <!-- Full Screen Background Watermark -->
           <div class="page-bg-watermark">
             <span class="typewriter-watermark-page">TRADELINE AI</span><span class="typing-cursor-page"></span>
@@ -73,19 +83,24 @@
             <!-- Left Hero Content -->
             <div class="blazity-hero-text">
               <div class="blazity-brand">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
                 <span>TRADE<span style="font-weight: 300;">LINE</span> AI</span>
               </div>
-              
+
               <h1 class="blazity-headline">
-                <span class="highlight-orange">Smart.</span> Crypto<br/>
+                <span class="highlight-orange">Smart.</span> Crypto<br />
                 Trading Advisor
               </h1>
-              
+
               <p class="blazity-subtitle">
-                Advanced Support & Resistance auto-detection for professional traders. Let Gemini AI analyze your charts and optimize your LKR budget instantly.
+                Advanced Support & Resistance auto-detection for professional traders. Let AI Agents analyze your charts
+                and optimize your LKR budget instantly.
               </p>
-              
+
               <div class="blazity-cta-group">
                 <button type="button" id="lock-screen-signin-btn" class="blazity-btn-primary">
                   Access Terminal
@@ -108,14 +123,18 @@
                 <div class="mockup-body">
                   <div class="mockup-chart-placeholder">
                     <div class="faux-annotation">FOCUS: Descending Triangle (Bilateral)</div>
-                    
+
                     <!-- Faux Chart Elements (Descending Triangle) -->
                     <!-- Top Slanted Trendline -->
-                    <div class="faux-line blue-trend" style="top: 20px; left: 10%; width: 85%; transform: rotate(10deg); transform-origin: top left;"></div>
-                    
+                    <div class="faux-line blue-trend"
+                      style="top: 20px; left: 10%; width: 85%; transform: rotate(10deg); transform-origin: top left;">
+                    </div>
+
                     <!-- Middle Dotted Trendline -->
-                    <div class="faux-line red-dotted" style="top: 80px; left: 5%; width: 90%; transform: rotate(15deg); transform-origin: top left;"></div>
-                    
+                    <div class="faux-line red-dotted"
+                      style="top: 80px; left: 5%; width: 90%; transform: rotate(15deg); transform-origin: top left;">
+                    </div>
+
                     <!-- Bottom Flat Support -->
                     <div class="faux-line white-support" style="top: 230px; left: 10%; width: 75%;"></div>
 
@@ -145,7 +164,8 @@
 
                     <!-- The Breakout -->
                     <div class="faux-wick" style="height: 80px; left: 82%; top: 140px;"></div>
-                    <div class="faux-candle up breakout-glow" style="height: 60px; left: calc(82% - 3px); top: 150px;"></div>
+                    <div class="faux-candle up breakout-glow" style="height: 60px; left: calc(82% - 3px); top: 150px;">
+                    </div>
                     <div class="faux-price-tag" style="top: 150px; left: 85%;">$0.0934</div>
 
                   </div>
@@ -175,4 +195,5 @@
   <script src="./src/neuro-bg.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
+
 </html>

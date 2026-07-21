@@ -72,7 +72,7 @@ export class DrawingEngine {
     Object.assign(this.svgEl.style, {
       position: 'absolute', top: '0', left: '0',
       width: '100%', height: '100%',
-      overflow: 'visible', zIndex: '10',
+      overflow: 'hidden', zIndex: '10',
       pointerEvents: 'none',
     });
     this.svgEl.id = 'drawing-overlay-svg';
@@ -105,8 +105,17 @@ export class DrawingEngine {
 
   _priceToY(price) { return this.series.priceToCoordinate(price); }
   _yToPrice(y)     { return this.series.coordinateToPrice(y); }
-  _timeToX(time)   { return this.chart.timeScale().timeToCoordinate(time); }
-  _xToTime(x)      { return this.chart.timeScale().coordinateToTime(x); }
+  _timeToX(time) {
+    let x = this.chart.timeScale().timeToCoordinate(time);
+    if (x == null) x = this.chart.timeScale().logicalToCoordinate(time);
+    return x;
+  }
+  
+  _xToTime(x) {
+    let t = this.chart.timeScale().coordinateToTime(x);
+    if (t == null) t = this.chart.timeScale().coordinateToLogical(x);
+    return t;
+  }
 
   _getXY(e) {
     const rect = this.container.getBoundingClientRect();
