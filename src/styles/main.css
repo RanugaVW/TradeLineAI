@@ -1396,6 +1396,8 @@ input:checked + .slider:before {
   align-items: center;
   gap: 16px;
   margin-top: 16px;
+  position: relative;
+  z-index: 10;
 }
 
 .blazity-btn-primary {
@@ -1708,6 +1710,7 @@ input:checked + .slider:before {
 
   .blazity-cta-group {
     justify-content: center;
+    width: 100%;
   }
 
   .blazity-headline {
@@ -1716,6 +1719,18 @@ input:checked + .slider:before {
 
   .app-mockup-window {
     transform: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .blazity-cta-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .blazity-btn-primary, .blazity-btn-secondary {
+    width: 100%;
+    text-align: center;
   }
 }
 
