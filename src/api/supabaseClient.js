@@ -217,3 +217,48 @@ export async function updateUserRole(userId, newRole) {
   if (error) throw error;
   return data;
 }
+
+/**
+ * AI Predictions Methods
+ */
+export async function saveAIPrediction(predictionData) {
+  if (!predictionData.user_id) throw new Error('User must be signed in to save predictions.');
+
+  const { data, error } = await supabase
+    .from('ai_predictions')
+    .insert([predictionData])
+    .select();
+
+  if (error) throw error;
+  return data?.[0];
+}
+
+export async function fetchUserPredictions(userId) {
+  if (!userId) return [];
+
+  const { data, error } = await supabase
+    .from('ai_predictions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('Fetch predictions warning:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+export async function updatePredictionResult(id, evaluationResult, newStatus = 'resolved') {
+  const { data, error } = await supabase
+    .from('ai_predictions')
+    .update({ 
+      evaluation_result: evaluationResult,
+      status: newStatus
+    })
+    .eq('id', id)
+    .select();
+
+  if (error) throw error;
+  return data?.[0];
+}

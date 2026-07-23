@@ -288,6 +288,9 @@ export function detectSupportResistance(candles, options = {}) {
       bounceDetails: tl.bounceDetails,
       type: tl.type,
       isSlanted: true,
+      slope: tl.slope,
+      intercept: tl.intercept,
+      startIndex: tl.p1.index,
       strength: tl.strength,
       distancePct: Number((((endPrice - currentPrice) / currentPrice) * 100).toFixed(2))
     });

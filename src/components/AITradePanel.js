@@ -10,20 +10,24 @@
  */
 import { fetchGeminiTradeSuggestion, getLiveUsdToLkr } from '../api/geminiApi.js';
 import { AITradeModal } from './AITradeModal.js';
+import { getCurrentSession, saveAIPrediction } from '../api/supabaseClient.js';
 
 export class AITradePanel {
   constructor(containerElement, options = {}) {
     this.container = containerElement;
     this.isOpen = false;
     this.isClosed = true;
-    this.lkrBudget = 100000;
-    this.liveRate = 305.0;
+    this.errorMsg = null;
+    this.lkrBudget = 50000;
     this.tradeDuration = 'Day Trade (1 - 24h)';
     this.marketContext = null;
     this.aiData = null;
     this.isLoading = false;
-    this.errorMsg = null;
     this.userContext = '';
+    this.chartImageBase64 = null; // Store image payload
+    
+    // Default fallback rate (approximate 2024 value)
+    this.liveRate = 305.50;
 
     const modalOverlay = document.getElementById('ai-modal-overlay');
     this.modal = modalOverlay ? new AITradeModal(modalOverlay) : null;
@@ -118,6 +122,7 @@ export class AITradePanel {
             <span class="ai-sparkle-icon"><i data-lucide="sparkles"></i></span>
             <span class="trigger-title">TradeLine AI Market Trade Advisor & LKR Optimizer</span>
             <span class="trigger-badge">${this.aiData ? `${this.aiData.signal} (${this.aiData.confidence}%)` : 'Interactive AI Tool'}</span>
+            <button type="button" id="open-history-modal-btn" style="margin-left: 10px; background: #3b82f6; color: #fff; font-weight: bold; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">View History</button>
           </div>
 
           <div class="trigger-right">
@@ -181,6 +186,15 @@ export class AITradePanel {
                 <small class="field-hint">Gemini AI will combine this fundamental context with the quantitative chart patterns.</small>
               </div>
 
+              <div class="input-field-group">
+                <label for="ai-chart-image" class="field-label">
+                  Attach Chart Screenshot (Optional):
+                </label>
+                <input type="file" id="ai-chart-image" accept="image/*" class="custom-file-input" style="width: 100%; margin-top: 5px; color: var(--text-secondary); font-size: 12px; border: 1px dashed rgba(255,255,255,0.2); padding: 5px; border-radius: 6px;" />
+                <img id="ai-chart-preview" src="${this.chartImageBase64 || ''}" style="max-width: 100%; margin-top: 10px; border-radius: 6px; display: ${this.chartImageBase64 ? 'block' : 'none'};" />
+                <small class="field-hint">Upload a screenshot of the chart with indicators for visual analysis.</small>
+              </div>
+
               <button type="button" id="generate-ai-btn" class="generate-ai-btn ${this.isLoading ? 'loading' : ''}">
                 ${this.isLoading ? '<span class="spinner"></span> Analyzing Market...' : 'Generate AI Trade Plan'}
               </button>
@@ -229,16 +243,28 @@ export class AITradePanel {
                         <small class="alloc-sub">Entry @ $${this.aiData.entryPrice}</small>
                       </div>
 
-                      <div class="alloc-card alloc-profit">
-                        <span class="alloc-label">Target Take Profit</span>
-                        <span class="alloc-val">+$${this.aiData.potentialProfitUsd}</span>
-                        <small class="alloc-sub">+LKR ${this.aiData.potentialProfitLkr.toLocaleString()} (@ $${this.aiData.takeProfitPrice})</small>
+                      <div class="alloc-card alloc-profit" style="grid-column: span 2;">
+                        <span class="alloc-label" style="display: flex; justify-content: space-between;">
+                          <span>Take Profit Targets (TP1, TP2, TP3)</span>
+                          ${this.aiData.expectedDuration ? `<span style="text-transform: none; color: #64b5f6; font-size: 11px; letter-spacing: 0;">Expected Duration: ${this.aiData.expectedDuration} (Target: ${this.aiData.colomboTargetText || ''} Colombo Time)</span>` : ''}
+                        </span>
+                        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 5px;">
+                          ${this.aiData.takeProfitLevels?.map((tp, idx) => `
+                            <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                              <span><strong>TP${idx + 1}</strong> @ $${tp.price.toFixed(4)}</span>
+                              <span style="color: #00e676;">+${tp.percentage.toFixed(2)}% (+LKR ${(Math.abs(tp.price - this.aiData.entryPrice) * this.aiData.coinsToBuy * this.aiData.usdToLkr).toLocaleString(undefined, {maximumFractionDigits: 0})})</span>
+                            </div>
+                          `).join('') || ''}
+                        </div>
                       </div>
 
-                      <div class="alloc-card alloc-loss">
+                      <div class="alloc-card alloc-loss" style="grid-column: span 2;">
                         <span class="alloc-label">Max Risk (Stop Loss)</span>
-                        <span class="alloc-val">-$${(this.aiData.usdBudget - (this.aiData.stopLossPrice * this.aiData.coinsToBuy)).toFixed(2)}</span>
-                        <small class="alloc-sub">-LKR ${this.aiData.potentialLossLkr.toLocaleString()} (@ $${this.aiData.stopLossPrice})</small>
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 5px;">
+                          <span><strong>SL</strong> @ $${this.aiData.stopLossPrice}</span>
+                          <span style="color: #ff1744;">-LKR ${this.aiData.potentialLossLkr.toLocaleString()}</span>
+                        </div>
+                        <small class="alloc-sub" style="margin-top: 5px; display: block;">Reason: ${this.aiData.stopLossReason}</small>
                       </div>
                     </div>
 
@@ -308,6 +334,26 @@ export class AITradePanel {
       this.userContext = e.target.value;
     });
 
+    const fileInput = this.container.querySelector('#ai-chart-image');
+    const previewImg = this.container.querySelector('#ai-chart-preview');
+    fileInput?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          this.chartImageBase64 = event.target.result;
+          if (previewImg) {
+            previewImg.src = this.chartImageBase64;
+            previewImg.style.display = 'block';
+          }
+        };
+        reader.readAsDataURL(file);
+      } else {
+        this.chartImageBase64 = null;
+        if (previewImg) previewImg.style.display = 'none';
+      }
+    });
+
     const generateBtn = this.container.querySelector('#generate-ai-btn');
     generateBtn?.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -321,9 +367,56 @@ export class AITradePanel {
       this.render();
 
       try {
-        const result = await fetchGeminiTradeSuggestion(this.marketContext, this.lkrBudget, this.tradeDuration, this.userContext);
+        const result = await fetchGeminiTradeSuggestion(this.marketContext, this.lkrBudget, this.tradeDuration, this.userContext, this.chartImageBase64);
         this.aiData = result;
         this.errorMsg = null;
+        
+        // Clear image from memory immediately after generation
+        this.chartImageBase64 = null;
+        if (fileInput) fileInput.value = '';
+
+        // Parse expected duration and calculate target resolution time
+        let addMs = 2 * 60 * 60 * 1000; // default 2 hours
+        if (result.expectedDuration) {
+          const match = result.expectedDuration.match(/(\d+)\s*(minute|hour|day|week)/i);
+          if (match) {
+            let maxVal = parseInt(match[1], 10);
+            // check if there's a second number like "3 to 6 hours"
+            const matchTo = result.expectedDuration.match(/to\s*(\d+)/i);
+            if (matchTo) maxVal = parseInt(matchTo[1], 10);
+            
+            const unit = match[2].toLowerCase();
+            if (unit.includes('minute')) addMs = maxVal * 60 * 1000;
+            else if (unit.includes('hour')) addMs = maxVal * 60 * 60 * 1000;
+            else if (unit.includes('day')) addMs = maxVal * 24 * 60 * 60 * 1000;
+            else if (unit.includes('week')) addMs = maxVal * 7 * 24 * 60 * 60 * 1000;
+          }
+        }
+        const targetDate = new Date(Date.now() + addMs);
+        const targetResolutionTime = targetDate.toISOString();
+        this.aiData.colomboTargetText = targetDate.toLocaleString('en-US', { timeZone: 'Asia/Colombo', dateStyle: 'medium', timeStyle: 'short' });
+
+        // Save to Supabase DB
+        try {
+          const session = await getCurrentSession();
+          if (session?.user?.id) {
+            await saveAIPrediction({
+              user_id: session.user.id,
+              symbol: this.marketContext.symbol || 'UNKNOWN',
+              timeframe: this.tradeDuration,
+              signal: result.signal,
+              entry_price: result.entryPrice,
+              stop_loss_price: result.stopLossPrice,
+              take_profit_levels: result.takeProfitLevels,
+              expected_duration_text: result.expectedDuration || 'Unknown',
+              target_resolution_time: targetResolutionTime,
+              target_colombo_time_text: this.aiData.colomboTargetText
+            });
+            console.log('Saved prediction to DB with target time:', targetResolutionTime);
+          }
+        } catch (dbErr) {
+          console.warn('Failed to save AI prediction to history:', dbErr);
+        }
 
         // Automatically apply AI Diagram overlay to main chart when generated!
         this.onApplyAIOverlay(this.aiData);
@@ -359,6 +452,18 @@ export class AITradePanel {
       e.stopPropagation();
       if (this.aiData && this.modal) {
         this.modal.open(this.aiData, this.marketContext);
+      }
+    });
+
+    // Open History Modal Listener
+    const openHistoryBtn = this.container.querySelector('#open-history-modal-btn');
+    openHistoryBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const modalOverlay = document.getElementById('ai-history-modal-overlay');
+      if (modalOverlay) {
+        modalOverlay.style.display = 'flex';
+        // The PredictionHistory component will load its data. We need to dispatch an event or instantiate it here.
+        document.dispatchEvent(new CustomEvent('open-prediction-history'));
       }
     });
   }

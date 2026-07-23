@@ -52,7 +52,7 @@ export async function getLiveUsdToLkr() {
   return cachedLkrRate; // Safe fallback
 }
 
-export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 100000, tradeDuration = 'Day Trade (1 - 24h)', userContext = '') {
+export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 100000, tradeDuration = 'Day Trade (1 - 24h)', userContext = '', imageBase64 = null) {
   const { 
     symbol, 
     currentPrice, 
@@ -102,6 +102,11 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
   const rsiStatus = patterns?.indicators?.rsiStatus || 'NEUTRAL';
   const vwap = patterns?.indicators?.vwap ?? 0;
   const vwapRelation = vwap > 0 ? (currentPrice > vwap ? 'ABOVE VWAP (bullish bias)' : 'BELOW VWAP (bearish bias)') : 'N/A';
+  
+  const srsi = patterns?.indicators?.srsi;
+  const srsiText = srsi 
+    ? `Stochastic RSI (14,3,3) — %K: ${srsi.k} | %D: ${srsi.d} | Status: ${srsi.status} | Cross: ${srsi.cross}`
+    : 'N/A';
   const volumeSpike = patterns?.indicators?.volumeSpike ? 'YES — Abnormal volume spike detected (1.8× avg)' : 'NO — Volume normal';
   const macdCross = patterns?.indicators?.macd?.isBullishCross ? 'BULLISH MACD CROSSOVER (Buy Signal)'
     : patterns?.indicators?.macd?.isBearishCross ? 'BEARISH MACD CROSSOVER (Sell Signal)'
@@ -167,22 +172,23 @@ Key Resistance Ceilings: ${resistanceLines.slice(0, 5).map(r => `$${r.price.toFi
 ▸ Candlestick Patterns (recent 10):
   ${detectedCandles}
 
-▸ Market Structure — Break of Structure (BOS):
+▸ Smart Money Concepts (SMC) — Break of Structure (BOS):
   ${detectedBos}
 
-▸ Market Structure — Change of Character (CHoCH):
+▸ Smart Money Concepts (SMC) — Change of Character (CHoCH):
   ${detectedChoch}
 
-▸ Fair Value Gaps / Imbalance Zones:
+▸ Smart Money Concepts (SMC) — Fair Value Gaps (FVG) / Imbalances:
   ${detectedFvg}
 
-▸ Order Blocks (Institutional Demand/Supply Zones):
+▸ Smart Money Concepts (SMC) — Order Blocks (Institutional Demand/Supply):
   ${detectedOB}
 
 ▸ Chart Reversal Patterns (Double Top/Bottom):
   ${detectedChartPats}
 
 ▸ RSI (14): ${rsiVal} — Status: ${rsiStatus}
+▸ Stochastic RSI (SRSI): ${srsiText}
 ▸ MACD Signal: ${macdCross}
 ▸ VWAP: $${vwap} — Price is ${vwapRelation}
 ▸ Volume Spike: ${volumeSpike}
@@ -195,6 +201,7 @@ Key Resistance Ceilings: ${resistanceLines.slice(0, 5).map(r => `$${r.price.toFi
 
 === YOUR TASK ===
 Analyze this complete technical picture for the ${tradeDuration} timeframe and generate an optimized trade plan.
+${imageBase64 ? 'I have also attached a screenshot of the chart with indicators (like RSI and SRSI) for your visual analysis. Please cross-reference the visual cues (such as divergences or trend continuation patterns) with the mathematical data provided above to confirm the trend direction.' : ''}
 Factor in: candlestick bias, BOS/CHoCH structure shifts, institutional order blocks, FVG fill targets, VWAP bias, RSI/MACD momentum, divergences, and Fibonacci confluence.
 
 Output a strict JSON object (no markdown, no backticks) with these exact fields:
@@ -202,8 +209,10 @@ Output a strict JSON object (no markdown, no backticks) with these exact fields:
 2. "confidence": integer 50–95 (factoring in confluence of multiple signals)
 3. "analysis": 3–4 sentence explanation referencing the specific detected patterns above and why they support this trade.
 4. "entryPrice": optimal entry price in USD (use S/R, OB, or FVG fill logic)
-5. "takeProfitPrice": target price in USD optimized for ${tradeDuration}
+5. "takeProfitLevels": array of exactly 3 objects: [{"price": TP1, "percentage": profit_pct1}, {"price": TP2, "percentage": profit_pct2}, {"price": TP3, "percentage": profit_pct3}]. Provide progressive targets.
 6. "stopLossPrice": stop loss price in USD (below key support or OB for buys, above resistance for sells)
+7. "stopLossReason": short string explaining why the SL is placed at this specific price.
+8. "expectedDuration": string estimating time to hit TP3 based on timeframe (e.g. "3 to 6 hours", "2 to 4 days").
 
 Respond ONLY with valid raw JSON.
 `;
@@ -220,12 +229,25 @@ Respond ONLY with valid raw JSON.
 
     for (const modelName of candidateModels) {
       try {
+        const parts = [{ text: promptText }];
+        if (imageBase64) {
+          const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+          const mimeTypeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
+          const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+          parts.push({
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          });
+        }
+
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }]
+            contents: [{ parts: parts }]
           })
         });
 
@@ -354,33 +376,69 @@ Respond ONLY with valid raw JSON.
       analysisText = `Balanced pattern engine readout (Bullish: ${bullishScore}, Bearish: ${bearishScore}). Price consolidating between support $${nearestSupport.toFixed(4)} and resistance $${nearestResistance.toFixed(4)} with ${candleHint}. Slight upside bias for ${tradeDuration}.`;
     }
 
+    const isBull = bullishScore >= bearishScore;
+    const entryPriceFallback = isBull ? nearestSupport * 1.005 : nearestResistance * 0.995;
+    const takeProfitPriceFallback = isBull ? nearestSupport * tpMult : nearestResistance * (2 - tpMult);
+    const stopLossPriceFallback = isBull ? nearestSupport * slMult : nearestResistance * (2 - slMult);
+
+    const profitDiff = Math.abs(takeProfitPriceFallback - entryPriceFallback);
+    const tp1Price = isBull ? entryPriceFallback + (profitDiff * 0.33) : entryPriceFallback - (profitDiff * 0.33);
+    const tp2Price = isBull ? entryPriceFallback + (profitDiff * 0.66) : entryPriceFallback - (profitDiff * 0.66);
+    const tp3Price = takeProfitPriceFallback;
+    
+    const tp1Pct = Math.abs(((tp1Price - entryPriceFallback) / entryPriceFallback) * 100);
+    const tp2Pct = Math.abs(((tp2Price - entryPriceFallback) / entryPriceFallback) * 100);
+    const tp3Pct = Math.abs(((tp3Price - entryPriceFallback) / entryPriceFallback) * 100);
+
+    let fallbackDuration = '2 to 4 hours';
+    if (tradeDuration.includes('Scalp')) fallbackDuration = '30 to 90 minutes';
+    else if (tradeDuration.includes('Swing')) fallbackDuration = '1 to 3 days';
+    else if (tradeDuration.includes('Hold')) fallbackDuration = '1 to 4 weeks';
+
     aiResult = {
       signal,
       confidence,
       analysis: analysisText,
-      entryPrice: bullishScore >= bearishScore ? nearestSupport * 1.005 : nearestResistance * 0.995,
-      takeProfitPrice: bullishScore >= bearishScore ? nearestSupport * tpMult : nearestResistance * (2 - tpMult),
-      stopLossPrice: bullishScore >= bearishScore ? nearestSupport * slMult : nearestResistance * (2 - slMult),
+      entryPrice: entryPriceFallback,
+      takeProfitLevels: [
+        { price: tp1Price, percentage: tp1Pct },
+        { price: tp2Price, percentage: tp2Pct },
+        { price: tp3Price, percentage: tp3Pct }
+      ],
+      stopLossPrice: stopLossPriceFallback,
+      stopLossReason: isBull ? `Placed safely below the key support floor at $${nearestSupport.toFixed(4)}.` : `Placed safely above the key resistance ceiling at $${nearestResistance.toFixed(4)}.`,
+      expectedDuration: fallbackDuration,
       engineType: 'Quantitative Pattern Engine (Pattern-Scored)'
     };
   }
 
   // Ensure Take Profit is ALWAYS above Entry Price and Stop Loss is ALWAYS below Entry Price
   let entryPrice = aiResult.entryPrice || currentPrice;
-  let takeProfitPrice = aiResult.takeProfitPrice;
+  let takeProfitLevels = aiResult.takeProfitLevels;
   let stopLossPrice = aiResult.stopLossPrice;
+  let stopLossReason = aiResult.stopLossReason || 'Calculated dynamic stop loss based on market structure.';
 
-  if (!takeProfitPrice || takeProfitPrice <= entryPrice) {
-    takeProfitPrice = entryPrice * 1.08;
-  }
-  if (!stopLossPrice || stopLossPrice >= entryPrice) {
-    stopLossPrice = entryPrice * 0.95;
+  const isBullSignal = aiResult.signal.includes('BUY') || (!aiResult.signal.includes('BUY') && !aiResult.signal.includes('SELL')); // Default to buy logic if HOLD
+
+  if (!takeProfitLevels || takeProfitLevels.length !== 3) {
+      // Create default 3 TPs
+      const baseDiff = entryPrice * 0.08; // 8% move
+      takeProfitLevels = [
+          { price: isBullSignal ? entryPrice + (baseDiff * 0.33) : entryPrice - (baseDiff * 0.33), percentage: 2.64 },
+          { price: isBullSignal ? entryPrice + (baseDiff * 0.66) : entryPrice - (baseDiff * 0.66), percentage: 5.28 },
+          { price: isBullSignal ? entryPrice + baseDiff : entryPrice - baseDiff, percentage: 8.0 }
+      ];
   }
 
+  if (!stopLossPrice || (isBullSignal && stopLossPrice >= entryPrice) || (!isBullSignal && stopLossPrice <= entryPrice)) {
+    stopLossPrice = isBullSignal ? entryPrice * 0.95 : entryPrice * 1.05;
+  }
+
+  const tp3Price = takeProfitLevels[2].price;
   const coinsToBuy = usdBudget / entryPrice;
-  const potentialProfitUsd = (takeProfitPrice - entryPrice) * coinsToBuy;
+  const potentialProfitUsd = Math.abs(tp3Price - entryPrice) * coinsToBuy;
   const potentialProfitLkr = potentialProfitUsd * usdToLkr;
-  const potentialLossUsd = (entryPrice - stopLossPrice) * coinsToBuy;
+  const potentialLossUsd = Math.abs(entryPrice - stopLossPrice) * coinsToBuy;
   const potentialLossLkr = potentialLossUsd * usdToLkr;
   const riskRewardRatio = potentialLossUsd > 0 ? (potentialProfitUsd / potentialLossUsd).toFixed(2) : '2.5';
 
@@ -391,8 +449,10 @@ Respond ONLY with valid raw JSON.
     engineType: aiResult.engineType || 'Gemini AI',
     tradeDuration,
     entryPrice: Number(entryPrice.toFixed(4)),
-    takeProfitPrice: Number(takeProfitPrice.toFixed(4)),
+    takeProfitLevels: takeProfitLevels.map(tp => ({ price: Number(tp.price.toFixed(4)), percentage: Number(tp.percentage.toFixed(2)) })),
     stopLossPrice: Number(stopLossPrice.toFixed(4)),
+    stopLossReason,
+    expectedDuration: aiResult.expectedDuration || '2 to 4 hours',
     lkrBudget,
     usdToLkr: Number(usdToLkr.toFixed(2)),
     usdBudget: Number(usdBudget.toFixed(2)),
@@ -402,4 +462,75 @@ Respond ONLY with valid raw JSON.
     potentialLossLkr: Number(potentialLossLkr.toFixed(2)),
     riskRewardRatio
   };
+}
+
+/**
+ * Automatically evaluates a past trade prediction using historical market data and Gemini AI.
+ */
+export async function evaluateTradeOutcome(prediction, historicalCandles) {
+  const apiKey = (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) || localStorage.getItem('gemini_api_key');
+  if (!apiKey || apiKey.includes('placeholder')) {
+    throw new Error('Valid Gemini API key required for evaluation.');
+  }
+
+  const tpLevels = typeof prediction.take_profit_levels === 'string' ? JSON.parse(prediction.take_profit_levels) : (prediction.take_profit_levels || []);
+  const tp1 = tpLevels[0]?.price || 'N/A';
+  const tp2 = tpLevels[1]?.price || 'N/A';
+  const tp3 = tpLevels[2]?.price || 'N/A';
+
+  const promptText = `You are an expert quantitative trading auditor. Your job is to evaluate a past trade setup against the actual historical price action that occurred.
+
+=== ORIGINAL PREDICTION ===
+Symbol: ${prediction.symbol}
+Timeframe: ${prediction.timeframe}
+Signal: ${prediction.signal}
+Entry Price: $${prediction.entry_price}
+Stop Loss Price: $${prediction.stop_loss_price}
+Take Profit Targets:
+  TP1: $${tp1}
+  TP2: $${tp2}
+  TP3: $${tp3}
+
+=== ACTUAL HISTORICAL DATA (After entry) ===
+We observed the following candle Highs and Lows over the ${prediction.expected_duration_text} duration:
+Max High Reached: $${Math.max(...historicalCandles.map(c => c.high))}
+Min Low Reached: $${Math.min(...historicalCandles.map(c => c.low))}
+=== YOUR TASK ===
+Analyze the max high and min low against the Entry, TP, and SL prices.
+For a BUY signal:
+  - If the Min Low dropped below the Stop Loss Price first, the trade hit the SL.
+  - If the Max High reached TP1, TP2, or TP3, note which targets were hit.
+For a SELL signal:
+  - If the Max High rose above the Stop Loss Price first, the trade hit the SL.
+  - If the Min Low dropped to TP1, TP2, or TP3, note which targets were hit.
+
+Output a strict JSON object with these exact fields:
+1. "status": string — "hit_tp3", "hit_tp2", "hit_tp1", "stopped_out", or "expired_unresolved" (if neither was hit).
+2. "feedback": string — A 2-sentence summary of what happened.
+3. "profitLossPct": number — The approximate profit or loss percentage based on the outcome.
+
+Respond ONLY with valid raw JSON.`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+  });
+
+  if (res.ok) {
+    const json = await res.json();
+    const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (rawText) {
+      try {
+        const cleanText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanText);
+      } catch (parseErr) {
+        throw new Error('Failed to parse Gemini JSON: ' + parseErr.message);
+      }
+    }
+    throw new Error('Gemini returned OK but no text: ' + JSON.stringify(json));
+  }
+  const errorText = await res.text().catch(() => 'no text');
+  throw new Error(`Failed to evaluate trade with Gemini. Status: ${res.status}. Body: ${errorText}`);
 }

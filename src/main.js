@@ -10,6 +10,9 @@ import { FavoritesToolbar } from './components/FavoritesToolbar.js';
 import { AdminPanel } from './components/AdminPanel.js';
 import { AITradePanel } from './components/AITradePanel.js';
 import { supabase, getCurrentSession, fetchUserProfile, saveUserAnnotations, loadUserAnnotations, subscribeToProfileChanges, subscribeToAnnotationChanges } from './api/supabaseClient.js';
+import { alertEngine } from './analysis/alertEngine.js';
+import { BacktestModal } from './components/BacktestModal.js';
+import { PredictionHistory } from './components/PredictionHistory.js';
 
 class App {
   constructor() {
@@ -51,8 +54,8 @@ class App {
         const dashboard = document.getElementById('main-dashboard');
         if (dashboard) {
           dashboard.style.gridTemplateColumns = isCollapsed
-            ? '50px 1fr'
-            : '50px 1fr 360px';
+            ? '1fr 0px'
+            : '1fr 360px';
         }
         setTimeout(() => {
           window.dispatchEvent(new Event('resize'));
@@ -89,6 +92,45 @@ class App {
         }, 80);
       }
     });
+
+    // Initialize Backtest Modal
+    this.backtestModal = new BacktestModal(document.body);
+    const btBtn = document.getElementById('run-backtest-btn');
+    if (btBtn) {
+      btBtn.addEventListener('click', () => {
+        this.backtestModal.open();
+      });
+    }
+
+    // Initialize Prediction History Modal
+    const historyContainer = document.getElementById('ai-history-container');
+    if (historyContainer) {
+      this.predictionHistory = new PredictionHistory(historyContainer);
+      
+      document.addEventListener('open-prediction-history', () => {
+        this.predictionHistory.init();
+      });
+
+      const closeHistoryBtn = document.getElementById('close-history-modal-btn');
+      if (closeHistoryBtn) {
+        closeHistoryBtn.addEventListener('click', () => {
+          const overlay = document.getElementById('ai-history-modal-overlay');
+          if (overlay) overlay.style.display = 'none';
+        });
+      }
+    }
+
+    // Alert Engine Toggle
+    const alertToggle = document.getElementById('ai-alert-toggle');
+    if (alertToggle) {
+      alertToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          alertEngine.start();
+        } else {
+          alertEngine.stop();
+        }
+      });
+    }
 
     // 2. Initialize Admin Panel Modal
     this.adminPanel = new AdminPanel({
@@ -370,10 +412,14 @@ class App {
   }
 
   async handleControlsChange(state) {
-    const symbolChanged = this.lastSymbol !== state.symbol;
-    const tfChanged = this.lastTf !== state.timeframe;
+    const symbolChanged = this.lastSymbol && this.lastSymbol !== state.symbol;
+    const tfChanged = this.lastTf && this.lastTf !== state.timeframe;
     this.lastSymbol = state.symbol;
     this.lastTf = state.timeframe;
+
+    if (symbolChanged) {
+      alert(`New crypto history (${state.symbol}) is analysing. Please wait until the analysing of the system is done.`);
+    }
     
     if (this.chartViewer.showLabels !== state.showLabels) {
       this.chartViewer.showLabels = state.showLabels;
@@ -383,6 +429,15 @@ class App {
     // Save drawings for old symbol, load for new one
     if (symbolChanged) {
       this.chartViewer.setDrawingSymbol(state.symbol);
+    }
+
+    // Update Visual Indicators
+    if (this.chartViewer.setVisualIndicators) {
+      this.chartViewer.setVisualIndicators({
+        bb: state.showBB,
+        rsi: state.showRSI,
+        macd: state.showMACD
+      });
     }
 
     await this.loadAndAnalyze(symbolChanged || tfChanged);

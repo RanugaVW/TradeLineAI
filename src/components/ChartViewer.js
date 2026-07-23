@@ -14,6 +14,148 @@
 import { createChart, LineStyle } from 'lightweight-charts';
 import { DrawingEngine } from './DrawingEngine.js';
 
+// --- Indicator Math Utilities ---
+function calculateSMA(data, period, key = 'close') {
+  const result = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) {
+      result.push({ time: data[i].time, value: null });
+      continue;
+    }
+    let sum = 0;
+    for (let j = 0; j < period; j++) {
+      sum += data[i - j][key];
+    }
+    result.push({ time: data[i].time, value: sum / period });
+  }
+  return result;
+}
+
+function calculateEMA(data, period, key = 'close') {
+  const result = [];
+  const multiplier = 2 / (period + 1);
+  let prevEma = null;
+
+  for (let i = 0; i < data.length; i++) {
+    const val = typeof data[i] === 'number' ? data[i] : data[i][key];
+    if (val === null) {
+      result.push({ time: data[i].time, value: null });
+      continue;
+    }
+    if (prevEma === null) {
+      // Initialize with SMA for the first valid period
+      let sum = 0;
+      let count = 0;
+      for (let j = 0; j <= i; j++) {
+        const v = typeof data[j] === 'number' ? data[j] : data[j][key];
+        if (v !== null) { sum += v; count++; }
+      }
+      if (count === period) {
+        prevEma = sum / period;
+        result.push({ time: data[i].time, value: prevEma });
+      } else {
+        result.push({ time: data[i].time, value: null });
+      }
+    } else {
+      const ema = (val - prevEma) * multiplier + prevEma;
+      result.push({ time: data[i].time, value: ema });
+      prevEma = ema;
+    }
+  }
+  return result;
+}
+
+function calculateBollingerBands(data, period = 20, stdDev = 2) {
+  const sma = calculateSMA(data, period);
+  const result = { upper: [], lower: [] };
+  
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) {
+      result.upper.push({ time: data[i].time, value: null });
+      result.lower.push({ time: data[i].time, value: null });
+      continue;
+    }
+    const currentSma = sma[i].value;
+    let sumVariance = 0;
+    for (let j = 0; j < period; j++) {
+      sumVariance += Math.pow(data[i - j].close - currentSma, 2);
+    }
+    const sd = Math.sqrt(sumVariance / period);
+    result.upper.push({ time: data[i].time, value: currentSma + (stdDev * sd) });
+    result.lower.push({ time: data[i].time, value: currentSma - (stdDev * sd) });
+  }
+  return result;
+}
+
+function calculateRSI(data, period = 14) {
+  const result = [];
+  let gains = 0, losses = 0;
+
+  for (let i = 0; i < data.length; i++) {
+    if (i === 0) {
+      result.push({ time: data[i].time, value: null });
+      continue;
+    }
+    const change = data[i].close - data[i - 1].close;
+    if (i <= period) {
+      if (change > 0) gains += change;
+      else losses -= change;
+      
+      if (i === period) {
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+        const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+        const rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+        result.push({ time: data[i].time, value: rsi });
+      } else {
+        result.push({ time: data[i].time, value: null });
+      }
+    } else {
+      const prevAvgGain = (gains * (period - 1) + (change > 0 ? change : 0)) / period;
+      const prevAvgLoss = (losses * (period - 1) + (change < 0 ? -change : 0)) / period;
+      gains = prevAvgGain;
+      losses = prevAvgLoss;
+      const rs = prevAvgLoss === 0 ? 100 : prevAvgGain / prevAvgLoss;
+      const rsi = prevAvgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+      result.push({ time: data[i].time, value: rsi });
+    }
+  }
+  return result;
+}
+
+function calculateMACD(data, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
+  const fastEma = calculateEMA(data, fastPeriod);
+  const slowEma = calculateEMA(data, slowPeriod);
+  
+  const macdLine = [];
+  for (let i = 0; i < data.length; i++) {
+    if (fastEma[i].value !== null && slowEma[i].value !== null) {
+      macdLine.push({ time: data[i].time, value: fastEma[i].value - slowEma[i].value });
+    } else {
+      macdLine.push({ time: data[i].time, value: null });
+    }
+  }
+  
+  // Filter out nulls for EMA calculation, then map back
+  const signalEma = calculateEMA(macdLine, signalPeriod, 'value');
+  
+  const result = { macd: [], signal: [], histogram: [] };
+  for (let i = 0; i < data.length; i++) {
+    const mVal = macdLine[i].value;
+    const sVal = signalEma[i]?.value;
+    result.macd.push({ time: data[i].time, value: mVal });
+    result.signal.push({ time: data[i].time, value: sVal });
+    
+    if (mVal !== null && sVal != null) {
+      result.histogram.push({ time: data[i].time, value: mVal - sVal });
+    } else {
+      result.histogram.push({ time: data[i].time, value: null });
+    }
+  }
+  return result;
+}
+// ---------------------------------
+
 export class ChartViewer {
   constructor(containerElement) {
     this.container = containerElement;
@@ -223,39 +365,37 @@ export class ChartViewer {
 
   setData(candles, resetView = false) {
     if (!candles || !Array.isArray(candles) || candles.length === 0) return;
-
     this.currentCandles = candles;
 
     const formattedData = candles.map(c => {
-      let t = c.time;
-      if (typeof t === 'string') {
-        t = Math.floor(new Date(t).getTime() / 1000);
-      } else if (typeof t === 'number' && t > 2000000000) {
-        t = Math.floor(t / 1000);
-      }
+      let open = c.open, high = c.high, low = c.low, close = c.close;
+      if (typeof open === 'string') open = parseFloat(open);
+      if (typeof high === 'string') high = parseFloat(high);
+      if (typeof low === 'string') low = parseFloat(low);
+      if (typeof close === 'string') close = parseFloat(close);
+
       return {
-        time: Number(t),
-        open: Number(c.open),
-        high: Number(c.high),
-        low: Number(c.low),
-        close: Number(c.close)
+        time: c.time,
+        open, high, low, close
       };
-    }).filter(c => !isNaN(c.time) && !isNaN(c.close)).sort((a, b) => a.time - b.time);
+    });
 
     const uniqueData = [];
-    let lastT = null;
+    const seenTimes = new Set();
     for (const d of formattedData) {
-      if (d.time !== lastT) {
+      if (!seenTimes.has(d.time)) {
+        seenTimes.add(d.time);
         uniqueData.push(d);
-        lastT = d.time;
       }
     }
 
-    if (uniqueData.length > 0) {
+    if (this.candlestickSeries) {
       this.candlestickSeries.setData(uniqueData);
-      if (resetView) {
-        this.chart.timeScale().fitContent();
-      }
+      this.renderVisualIndicators(); // Re-render indicators when new candles arrive
+    }
+
+    if (resetView) {
+      this.chart.timeScale().fitContent();
     }
   }
 
@@ -335,19 +475,7 @@ export class ChartViewer {
         ? line.bounceDetails[line.bounceDetails.length - 1].time
         : (this.currentCandles && this.currentCandles.length > 0 ? this.currentCandles[this.currentCandles.length - 1].time : null);
 
-      let startTime = firstTouchTime;
-      if (rangeStartSec && rangeStartSec > 0) {
-        startTime = Math.max(firstTouchTime, rangeStartSec);
-      }
-
-      let endTime = lastTouchTime;
-      if (rangeEndSec && rangeEndSec > 0 && !isExtended) {
-        endTime = Math.min(lastTouchTime, rangeEndSec);
-      } else if (isExtended && futureTime) {
-        endTime = futureTime;
-      }
-
-      if (startTime && endTime && (startTime <= endTime || isExtended)) {
+      try {
         if (line.isSlanted) {
           const trendlineSeries = this.chart.addLineSeries({
             color,
@@ -358,16 +486,47 @@ export class ChartViewer {
             title: `${isSupport ? 'SUP Trend' : 'RES Trend'} (${line.bounces}x) ${isExtended ? '↔ EXT' : ''}`
           });
 
-          const p1Time = (rangeStartSec && rangeStartSec > line.p1.time) ? rangeStartSec : line.p1.time;
-          const endPrice = line.p2 ? line.p2.price : line.price;
+          // Draw from the true start
+          const p1Time = line.p1.time;
+          let p1Price = line.p1.price;
+          
+          let p2Time = line.p2.time;
+          let p2Price = line.p2.price;
+
+          // If extended, calculate the future price using the slope
+          if (isExtended && futureTime && this.currentCandles) {
+            p2Time = futureTime;
+            const p1Idx = line.startIndex || this.currentCandles.findIndex(c => c.time === p1Time);
+            if (p1Idx >= 0 && line.slope !== undefined && line.intercept !== undefined) {
+                const firstC = this.currentCandles[0];
+                const lastC = this.currentCandles[this.currentCandles.length - 1];
+                const avgStep = (lastC.time - firstC.time) / (this.currentCandles.length - 1);
+                const barsDiff = Math.round((futureTime - firstC.time) / avgStep);
+                p2Price = line.slope * barsDiff + line.intercept;
+            }
+          }
+
+          if (p1Time >= p2Time) {
+              p2Time = p1Time + 60;
+          }
 
           trendlineSeries.setData([
-            { time: p1Time, value: line.p1.price },
-            { time: endTime || line.p2.time, value: endPrice }
+            { time: p1Time, value: p1Price },
+            { time: p2Time, value: p2Price }
           ]);
 
           this.trendlineSeriesList.push(trendlineSeries);
         } else {
+          let startTime = firstTouchTime;
+          let endTime = lastTouchTime;
+          if (isExtended && futureTime) {
+            endTime = futureTime;
+          }
+
+          if (startTime >= endTime) {
+             endTime = startTime + (futureTime ? Math.max(60, futureTime - startTime) : 3600);
+          }
+
           const horzSeries = this.chart.addLineSeries({
             color,
             lineWidth: isExtended ? 3 : 2,
@@ -384,6 +543,8 @@ export class ChartViewer {
 
           this.trendlineSeriesList.push(horzSeries);
         }
+      } catch (error) {
+        console.warn(`Failed to render SR line ${line.id || 'unknown'}:`, error);
       }
 
       const bounceColor = isSupport ? '#00e5ff' : '#ff007f';
@@ -783,18 +944,21 @@ export class ChartViewer {
       });
     }
 
+    aiMarkers.sort((a, b) => a.time - b.time);
     this.candlestickSeries.setMarkers(aiMarkers);
 
-    if (aiData.takeProfitPrice) {
-      const tpLine = this.candlestickSeries.createPriceLine({
-        price: aiData.takeProfitPrice,
-        color: '#3b82f6',
-        lineWidth: 2,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: `TARGET TP ($${aiData.takeProfitPrice.toFixed(4)})`
+    if (aiData.takeProfitLevels && Array.isArray(aiData.takeProfitLevels)) {
+      aiData.takeProfitLevels.forEach((tp, idx) => {
+        const tpLine = this.candlestickSeries.createPriceLine({
+          price: tp.price,
+          color: '#3b82f6',
+          lineWidth: 2,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: `TP${idx + 1} ($${tp.price.toFixed(4)})`
+        });
+        this.aiOverlayPriceLines.push(tpLine);
       });
-      this.aiOverlayPriceLines.push(tpLine);
     }
 
     if (aiData.stopLossPrice) {
@@ -804,7 +968,7 @@ export class ChartViewer {
         lineWidth: 2,
         lineStyle: 2,
         axisLabelVisible: true,
-        title: `STOP LOSS ($${aiData.stopLossPrice.toFixed(4)})`
+        title: `SL ($${aiData.stopLossPrice.toFixed(4)})`
       });
       this.aiOverlayPriceLines.push(slLine);
     }
@@ -896,6 +1060,109 @@ export class ChartViewer {
       this.drawingEngine._scheduleRender();
     } catch (e) {
       console.warn("Failed to set user annotations", e);
+    }
+  }
+
+  setVisualIndicators({ bb, rsi, macd }) {
+    if (!this.chart || !this.candlestickSeries) return;
+    
+    this.visualStates = { bb, rsi, macd };
+    this.renderVisualIndicators();
+  }
+
+  renderVisualIndicators() {
+    if (!this.chart || !this.currentCandles || this.currentCandles.length === 0) return;
+
+    // Cleanup existing indicator series
+    [
+      'bbUpperSeries', 'bbLowerSeries', 
+      'rsiSeries', 'macdSeries', 'macdSignalSeries', 'macdHistSeries'
+    ].forEach(key => {
+      if (this[key]) {
+        try { this.chart.removeSeries(this[key]); } catch (e) {}
+        this[key] = null;
+      }
+    });
+
+    const states = this.visualStates || {};
+
+    if (states.bb) {
+      const bbData = calculateBollingerBands(this.currentCandles);
+      this.bbUpperSeries = this.chart.addLineSeries({
+        color: 'rgba(59, 130, 246, 0.7)',
+        lineWidth: 1,
+        crosshairMarkerVisible: false,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: 'BB Upper'
+      });
+      this.bbLowerSeries = this.chart.addLineSeries({
+        color: 'rgba(59, 130, 246, 0.7)',
+        lineWidth: 1,
+        crosshairMarkerVisible: false,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: 'BB Lower'
+      });
+      this.bbUpperSeries.setData(bbData.upper.filter(d => d.value !== null));
+      this.bbLowerSeries.setData(bbData.lower.filter(d => d.value !== null));
+    }
+
+    if (states.rsi) {
+      const rsiData = calculateRSI(this.currentCandles);
+      this.rsiSeries = this.chart.addLineSeries({
+        color: '#a855f7',
+        lineWidth: 2,
+        priceScaleId: 'rsiScale',
+        title: 'RSI'
+      });
+      
+      this.chart.priceScale('rsiScale').applyOptions({
+        scaleMargins: { top: 0.8, bottom: 0 },
+        autoScale: true
+      });
+
+      const filteredRsi = rsiData.filter(d => d.value !== null);
+      this.rsiSeries.setData(filteredRsi);
+
+      // We can't directly add priceLines to custom scales if they auto-scale weirdly, but setting line at 70/30 helps
+      this.rsiSeries.createPriceLine({ price: 70, color: 'rgba(255, 255, 255, 0.3)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+      this.rsiSeries.createPriceLine({ price: 30, color: 'rgba(255, 255, 255, 0.3)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+    }
+
+    if (states.macd) {
+      const macdData = calculateMACD(this.currentCandles);
+      this.macdHistSeries = this.chart.addHistogramSeries({
+        priceScaleId: 'macdScale',
+        title: 'MACD Hist'
+      });
+      this.macdSeries = this.chart.addLineSeries({
+        color: '#3b82f6',
+        lineWidth: 2,
+        priceScaleId: 'macdScale',
+        title: 'MACD'
+      });
+      this.macdSignalSeries = this.chart.addLineSeries({
+        color: '#f59e0b',
+        lineWidth: 2,
+        priceScaleId: 'macdScale',
+        title: 'Signal'
+      });
+
+      this.chart.priceScale('macdScale').applyOptions({
+        scaleMargins: { top: 0.8, bottom: 0 },
+        autoScale: true
+      });
+
+      const coloredHist = macdData.histogram.filter(d => d.value !== null).map(d => ({
+        time: d.time,
+        value: d.value,
+        color: d.value >= 0 ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'
+      }));
+
+      this.macdHistSeries.setData(coloredHist);
+      this.macdSeries.setData(macdData.macd.filter(d => d.value !== null));
+      this.macdSignalSeries.setData(macdData.signal.filter(d => d.value !== null));
     }
   }
 }

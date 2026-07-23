@@ -42,4 +42,27 @@ describe('patternEngine', () => {
     expect(result.prediction).toHaveProperty('probability');
     expect(result.prediction).toHaveProperty('reasons');
   });
+
+  it('should calculate SRSI and its %K and %D lines', () => {
+    // Need at least 28 candles to calculate RSI(14) and then SRSI(14)
+    const candles = Array.from({ length: 40 }, (_, i) => ({
+      time: i,
+      // Creating some price movement to ensure RSI doesn't just stay at 50 flat
+      open: 100,
+      high: 100 + (i % 5),
+      low: 100 - (i % 5),
+      close: 100 + Math.sin(i) * 10,
+      volume: 1000
+    }));
+    
+    const result = detectAllPatterns(candles);
+    expect(result.indicators).toBeDefined();
+    expect(result.indicators.srsi).toBeDefined();
+    expect(result.indicators.srsi).toHaveProperty('k');
+    expect(result.indicators.srsi).toHaveProperty('d');
+    expect(result.indicators.srsi).toHaveProperty('status');
+    expect(result.indicators.srsi).toHaveProperty('cross');
+    expect(typeof result.indicators.srsi.k).toBe('number');
+    expect(typeof result.indicators.srsi.d).toBe('number');
+  });
 });

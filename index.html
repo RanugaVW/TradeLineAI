@@ -24,6 +24,16 @@
 
 <body>
   <div id="app" class="logged-out-mode">
+    <!-- Full Screen Background Watermark for Main App -->
+    <div class="page-bg-watermark">
+      <span class="typewriter-watermark-page">TRADELINE AI</span><span class="typing-cursor-page"></span>
+    </div>
+
+    <!-- Neuro Canvas Background -->
+    <div class="blazity-bg-shapes">
+      <canvas id="neuro-canvas"></canvas>
+    </div>
+
     <!-- Top Navigation Header -->
     <header class="navbar">
       <div class="brand-container">
@@ -41,6 +51,18 @@
         <div class="header-status" title="Active S/R engine strictly validating >= 3 price bounces">
           <span class="live-pulse"></span>
           <span>Engine Active (3+ Bounce Rule)</span>
+        </div>
+
+        <button id="run-backtest-btn" class="header-btn">
+          <i data-lucide="history"></i> Backtester
+        </button>
+
+        <div class="alert-toggle-container" title="Background AI Market Polling">
+          <label class="switch">
+            <input type="checkbox" id="ai-alert-toggle">
+            <span class="slider round"></span>
+          </label>
+          <span>AI Alerts</span>
         </div>
 
         <!-- Supabase Auth / User Profile Header Section -->
@@ -66,18 +88,6 @@
           }
         </script>
         <div class="blazity-landing">
-
-          <!-- Full Screen Background Watermark -->
-          <div class="page-bg-watermark">
-            <span class="typewriter-watermark-page">TRADELINE AI</span><span class="typing-cursor-page"></span>
-          </div>
-
-          <!-- Abstract Background Shapes -->
-          <div class="blazity-bg-shapes">
-            <canvas id="neuro-canvas"></canvas>
-            <div class="shape-circle-1"></div>
-            <div class="shape-circle-2"></div>
-          </div>
 
           <div class="blazity-container">
             <!-- Left Hero Content -->
@@ -206,6 +216,17 @@
 
   <!-- Dedicated AI Focused Analysis & Zoomed Chart Modal -->
   <div id="ai-modal-overlay" class="ai-modal-overlay"></div>
+
+  <!-- AI Prediction History Modal -->
+  <div id="ai-history-modal-overlay" class="ai-modal-overlay" style="display: none; justify-content: center; align-items: center; z-index: 10000; position: fixed; inset: 0; background: rgba(0,0,0,0.8);">
+    <div class="ai-modal-content" style="width: 800px; max-width: 95%; max-height: 90vh; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color);">
+        <h2 style="margin: 0;">AI Prediction History & Feedback</h2>
+        <button id="close-history-modal-btn" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
+      </div>
+      <div id="ai-history-container" style="flex: 1; overflow-y: auto; overflow-x: hidden;"></div>
+    </div>
+  </div>
 
   <script src="./src/neuro-bg.js"></script>
   <script type="module" src="./src/main.js"></script>

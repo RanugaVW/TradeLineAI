@@ -13,7 +13,9 @@ export const POPULAR_PAIRS = [
   { symbol: 'ETH-USDT', name: 'Ethereum (ETH/USDT)', provider: 'binance', defaultPrice: 3450 },
   { symbol: 'SOL-USDT', name: 'Solana (SOL/USDT)', provider: 'binance', defaultPrice: 145 },
   { symbol: 'XRP-USDT', name: 'Ripple (XRP/USDT)', provider: 'binance', defaultPrice: 0.58 },
-  { symbol: 'DOGE-USDT', name: 'Dogecoin (DOGE/USDT)', provider: 'binance', defaultPrice: 0.12 }
+  { symbol: 'DOGE-USDT', name: 'Dogecoin (DOGE/USDT)', provider: 'binance', defaultPrice: 0.12 },
+  { symbol: 'ZEC-USDT', name: 'Zcash (ZEC/USDT)', provider: 'binance', defaultPrice: 35 },
+  { symbol: 'PAXG-USDT', name: 'Gold (PAXG/USDT)', provider: 'binance', defaultPrice: 2400 }
 ];
 
 export const TIMEFRAMES = [
@@ -43,7 +45,13 @@ export function parseTimeframe(label = '1H') {
     let aggregate = val;
     let groupSize = 1;
 
-    if (unit.startsWith('m') && !unit.includes('month') && !unit.includes('mth')) {
+    if (unit.startsWith('s')) {
+      seconds = val;
+      okx = '1s'; // Many exchanges support 1s, we will aggregate locally
+      binance = '1s';
+      cryptocompare = 'minute'; // Fallback
+      if (val > 1) groupSize = val;
+    } else if (unit.startsWith('m') && !unit.includes('month') && !unit.includes('mth')) {
       seconds = val * 60;
       okx = val <= 15 ? `${val}m` : '15m';
       binance = `${val}m`;

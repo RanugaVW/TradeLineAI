@@ -32,7 +32,8 @@ export function detectAllPatterns(candles, options = {}) {
     candlestickPatterns,
     marketStructure,
     indicators,
-    chartPatterns
+    chartPatterns,
+    divergences
   });
 
   return {
@@ -111,6 +112,24 @@ function predictNextMove(analysisData) {
     } else if (ind.rsi > 70) {
       score -= 5;
       reasons.push(`RSI Overbought (${ind.rsi}) (-5)`);
+    }
+  }
+
+  // RSI Divergences (Strong Signal)
+  const divs = analysisData.divergences || [];
+  for (const d of divs) {
+    if (d.type === 'BULLISH_DIVERGENCE') {
+      score += 15;
+      reasons.push(`Bullish RSI Divergence (+15)`);
+    } else if (d.type === 'BEARISH_DIVERGENCE') {
+      score -= 15;
+      reasons.push(`Bearish RSI Divergence (-15)`);
+    } else if (d.type === 'HIDDEN_BULLISH_DIVERGENCE') {
+      score += 12;
+      reasons.push(`Hidden Bullish RSI Divergence (+12)`);
+    } else if (d.type === 'HIDDEN_BEARISH_DIVERGENCE') {
+      score -= 12;
+      reasons.push(`Hidden Bearish RSI Divergence (-12)`);
     }
   }
 
@@ -1138,6 +1157,42 @@ function calculateTechnicalIndicators(candles) {
 
   const currentRsi = rsiHistory.length > 0 ? rsiHistory[rsiHistory.length - 1].rsi : 50;
 
+  // Calculate Stochastic RSI (14, 3, 3)
+  const srsiHistory = [];
+  const lookback = 14;
+  for (let i = lookback - 1; i < rsiHistory.length; i++) {
+    const window = rsiHistory.slice(i - lookback + 1, i + 1).map(r => r.rsi);
+    const minRsi = Math.min(...window);
+    const maxRsi = Math.max(...window);
+    
+    let stochRsi = 0;
+    if (maxRsi !== minRsi) {
+      stochRsi = (rsiHistory[i].rsi - minRsi) / (maxRsi - minRsi) * 100;
+    }
+    srsiHistory.push(stochRsi);
+  }
+
+  // Calculate %K (3-period SMA of StochRSI) and %D (3-period SMA of %K)
+  const kLine = [];
+  for (let i = 2; i < srsiHistory.length; i++) {
+    const k = (srsiHistory[i] + srsiHistory[i-1] + srsiHistory[i-2]) / 3;
+    kLine.push(k);
+  }
+  
+  const dLine = [];
+  for (let i = 2; i < kLine.length; i++) {
+    const d = (kLine[i] + kLine[i-1] + kLine[i-2]) / 3;
+    dLine.push(d);
+  }
+
+  const currentK = kLine.length > 0 ? parseFloat(kLine[kLine.length - 1].toFixed(2)) : 50;
+  const currentD = dLine.length > 0 ? parseFloat(dLine[dLine.length - 1].toFixed(2)) : 50;
+  
+  const srsiStatus = currentK >= 80 ? 'OVERBOUGHT' : (currentK <= 20 ? 'OVERSOLD' : 'NEUTRAL');
+  const srsiCross = (kLine.length > 1 && kLine[kLine.length - 2] <= dLine[dLine.length - 2] && currentK > currentD) ? 'BULLISH_CROSS' 
+                  : (kLine.length > 1 && kLine[kLine.length - 2] >= dLine[dLine.length - 2] && currentK < currentD) ? 'BEARISH_CROSS' 
+                  : 'NONE';
+
   // Calculate MACD (12, 26, 9)
   const ema12 = calculateEMA(closes, 12);
   const ema26 = calculateEMA(closes, 26);
@@ -1178,6 +1233,12 @@ function calculateTechnicalIndicators(candles) {
     rsi: currentRsi,
     rsiStatus: currentRsi >= 70 ? 'OVERBOUGHT' : (currentRsi <= 30 ? 'OVERSOLD' : 'NEUTRAL'),
     rsiHistory,
+    srsi: {
+      k: currentK,
+      d: currentD,
+      status: srsiStatus,
+      cross: srsiCross
+    },
     macd: {
       latest: latestMacd,
       isBullishCross: isMacdBullishCross,
@@ -1215,12 +1276,30 @@ function detectDivergences(candles, rsiHistory) {
     });
   }
 
+  // Hidden Bullish Divergence: Higher Low in Price, Lower Low in RSI (Trend Continuation)
+  if (p2.low > p1.low && r2.rsi < r1.rsi) {
+    divergences.push({
+      type: 'HIDDEN_BULLISH_DIVERGENCE',
+      indicator: 'RSI',
+      desc: `Hidden Bullish RSI Divergence: Price made Higher Low ($${p2.low.toFixed(4)}) while RSI made Lower Low (${r2.rsi} vs ${r1.rsi}).`
+    });
+  }
+
   // Bearish Divergence: Higher High in Price, Lower High in RSI
   if (p2.high > p1.high && r2.rsi < r1.rsi) {
     divergences.push({
       type: 'BEARISH_DIVERGENCE',
       indicator: 'RSI',
       desc: `Bearish RSI Divergence: Price made Higher High ($${p2.high.toFixed(4)}) while RSI made Lower High (${r2.rsi} vs ${r1.rsi}).`
+    });
+  }
+
+  // Hidden Bearish Divergence: Lower High in Price, Higher High in RSI (Trend Continuation)
+  if (p2.high < p1.high && r2.rsi > r1.rsi) {
+    divergences.push({
+      type: 'HIDDEN_BEARISH_DIVERGENCE',
+      indicator: 'RSI',
+      desc: `Hidden Bearish RSI Divergence: Price made Lower High ($${p2.high.toFixed(4)}) while RSI made Higher High (${r2.rsi} vs ${r1.rsi}).`
     });
   }
 
