@@ -322,6 +322,12 @@ class App {
     observer.observe(document.body, { childList: true, subtree: true });
     
     window.refreshIcons();
+    
+    // Set initial timezone
+    if (this.controlsBar && this.controlsBar.state) {
+      this.chartViewer.setTimezone(this.controlsBar.state.timezone);
+      this.lastTimezone = this.controlsBar.state.timezone;
+    }
   }
 
   updateLockScreenState() {
@@ -438,6 +444,11 @@ class App {
         rsi: state.showRSI,
         macd: state.showMACD
       });
+    }
+
+    if (this.lastTimezone !== state.timezone) {
+      this.lastTimezone = state.timezone;
+      this.chartViewer.setTimezone(state.timezone);
     }
 
     await this.loadAndAnalyze(symbolChanged || tfChanged);
