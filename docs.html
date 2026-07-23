@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,14 +8,21 @@
   <link rel="stylesheet" href="./src/styles/main.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;600;800&display=swap"
+    rel="stylesheet">
 </head>
+
 <body class="docs-body">
-  
+
   <!-- Top Navigation -->
   <header class="docs-header">
     <div class="docs-brand">
-      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
       <span>TRADE<span style="font-weight: 300;">LINE</span> AI</span>
     </div>
     <a href="index.html" class="docs-back-btn">Back to Application</a>
@@ -22,77 +30,181 @@
 
   <!-- Docs Layout -->
   <div class="docs-layout">
-    
+
     <!-- Sidebar -->
     <aside class="docs-sidebar">
       <h3 class="docs-nav-title">Getting Started</h3>
       <ul class="docs-nav-list">
         <li><a href="#introduction">Introduction</a></li>
       </ul>
-      
+
       <h3 class="docs-nav-title">Core Features</h3>
       <ul class="docs-nav-list">
         <li><a href="#agentic-ai">Gemini Agentic AI</a></li>
-        <li><a href="#sr-detection">Auto S/R Detection</a></li>
-        <li><a href="#drawing-tools">Drawing Tools</a></li>
+        <li><a href="#ai-trading-accuracy">Self Testing System</a></li>
+        <li><a href="#market-structure">Smart Money Structure</a></li>
+        <li><a href="#sr-detection">Auto S/R Engine</a></li>
+        <li><a href="#market-theories">Live Market Theories</a></li>
+        <li><a href="#pattern-detection">Pattern Detection</a></li>
       </ul>
     </aside>
 
     <!-- Main Content -->
     <main class="docs-content">
       <div class="docs-article">
-        
+
         <h1 id="introduction">TradeLine AI Documentation</h1>
-        <p class="docs-lead">Welcome to the official documentation for TradeLine AI. Learn how our Agentic AI and automated analysis tools can elevate your cryptocurrency trading strategy.</p>
+        <p class="docs-lead">Welcome to the official documentation for TradeLine AI. Learn how our Agentic AI and
+          automated analysis tools can elevate your cryptocurrency trading strategy.</p>
 
         <hr class="docs-divider">
 
         <h2 id="agentic-ai">1. Gemini Agentic AI Advisor</h2>
-        <p>TradeLine AI features a powerful Agentic AI system built on top of Gemini. The AI doesn't just read data; it actively analyzes your current chart viewport, assesses your LKR to USD budget, and generates actionable, context-aware trading signals (Buy, Sell, Hold).</p>
-        
+        <p>TradeLine AI features a powerful Agentic AI system built on top of Gemini. The AI doesn't just read data; it
+          actively analyzes your current chart viewport, assesses your LKR to USD budget, and generates actionable,
+          context-aware trading signals (Buy, Sell, Hold).</p>
+
         <!-- Image Placeholder -->
-        <div class="docs-image-placeholder">
-          <p class="placeholder-text">User Action Required: Rename your AI screenshot to <code>ai-agent.png</code> and place it in the same folder as this file, or update this <code>src</code> path.</p>
-          <img src="ai-agent.png" alt="AI Agent Interface Screenshot" onerror="this.style.display='none'">
+        <div class="docs-image-placeholder" oncontextmenu="return false;" onclick="expandImage('images/ai-agent.png')">
+          <img src="images/ai-agent.png" class="protected-image" alt="AI Agent Interface Screenshot"
+            onerror="this.style.display='none'">
         </div>
-        
+
         <ul class="docs-feature-list">
-          <li><strong>Context Aware:</strong> The agent analyzes the exact candlesticks currently visible on your screen.</li>
-          <li><strong>Budget Optimization:</strong> Input your LKR budget, and the AI calculates your position sizing in real-time based on live Binance conversion rates.</li>
+          <li><strong>Context Aware:</strong> The agent analyzes the exact candlesticks currently visible on your
+            screen.</li>
+          <li><strong>Budget Optimization:</strong> Input your LKR budget, and the AI calculates your position sizing in
+            real-time based on live Binance conversion rates.</li>
           <li><strong>Risk Analysis:</strong> Provides detailed breakdowns of trade risk and potential R/R ratio.</li>
         </ul>
 
         <hr class="docs-divider">
 
-        <h2 id="sr-detection">2. Automated 3+ Bounce S/R Detection</h2>
-        <p>Finding accurate Support and Resistance (S/R) levels is the foundation of technical analysis. Our system uses a proprietary algorithm to scan historical price data and automatically plot highly accurate S/R lines.</p>
-        
+        <h2 id="ai-trading-accuracy">2. Test System By Yourself 1st before Trading</h2>
+        <p>You can rigorously backtest the system by making predictions and verifying them later. This allows you to
+          witness the AI's analytical power firsthand before committing to a strategy. Please note that while our
+          advanced algorithms provide a significant trading edge, no system can predict market movements with 100%
+          certainty. We strongly recommend making your own informed trades, guided by our system's deep analytical
+          insights.</p>
+
         <!-- Image Placeholder -->
-        <div class="docs-image-placeholder">
-          <p class="placeholder-text">User Action Required: Rename your S/R detection screenshot to <code>sr-detection.png</code> and place it in the same folder as this file, or update this <code>src</code> path.</p>
-          <img src="sr-detection.png" alt="Support and Resistance Detection Screenshot" onerror="this.style.display='none'">
+        <div class="docs-image-placeholder" oncontextmenu="return false;"
+          onclick="expandImage('images/ai-accuracy.png')">
+          <img src="images/ai-accuracy.png" class="protected-image" alt="AI Accuracy & Guidance Screenshot"
+            onerror="this.style.display='none'">
+        </div>
+
+        <hr class="docs-divider">
+
+        <h2 id="market-structure">3. Smart Money Market Structure (Trend Detection)</h2>
+        <p>TradeLine AI doesn't rely on lagging moving averages to determine the trend. Instead, it uses pure price
+          action and <strong>Smart Money Concepts (SMC)</strong> to identify the true market trend in real-time by
+          tracking swing highs and swing lows.</p>
+
+        <!-- Image Placeholder -->
+        <div class="docs-image-placeholder" oncontextmenu="return false;"
+          onclick="expandImage('images/market-structure.png')">
+          <img src="images/market-structure.png" class="protected-image" alt="Market Structure & Smart Money Screenshot"
+            onerror="this.style.display='none'">
         </div>
 
         <ul class="docs-feature-list">
-          <li><strong>Strict Validation:</strong> Levels are only drawn if they have withstood at least 3 distinct price bounces.</li>
-          <li><strong>Strength Scoring:</strong> S/R lines are visually weighted; thicker lines indicate stronger historical significance.</li>
-          <li><strong>Click-to-Focus:</strong> Clicking any S/R level in the analytics panel instantly snaps your chart to that exact price point.</li>
+          <li><strong>BOS (Break of Structure):</strong> This indicates trend continuation. In an uptrend, a BOS occurs
+            when a candle closes above the most recent swing high. In a downtrend, it happens when price closes below
+            the most recent swing low.</li>
+          <li><strong>CHoCH (Change of Character):</strong> This signals a trend reversal. If we are in an uptrend and
+            the price suddenly drops and closes below the most recent swing low, a Bearish CHoCH is triggered, instantly
+            flipping the system's trend detection to a Downtrend.</li>
+          <li><strong>Structure State:</strong> The analytics panel keeps a running log of every BOS and CHoCH event,
+            providing you with a clear, objective view of whether the current trend structure is intact or breaking
+            down.</li>
         </ul>
 
         <hr class="docs-divider">
 
-        <h2 id="drawing-tools">3. Professional Drawing Tools</h2>
-        <p>Take full control of your technical analysis with our suite of built-in drawing tools. Annotate the chart directly, draw custom trendlines, and calculate Fibonacci retracements without ever leaving the terminal.</p>
-        
+        <h2 id="sr-detection">4. Automated 3+ Bounce S/R Detection</h2>
+        <p>Finding accurate Support and Resistance (S/R) levels is the foundation of technical analysis. Our system uses
+          a proprietary algorithm to scan historical price data and automatically plot highly accurate S/R lines.</p>
+
         <!-- Image Placeholder -->
-        <div class="docs-image-placeholder">
-          <p class="placeholder-text">User Action Required: Rename your drawing tools screenshot to <code>drawing-tools.png</code> and place it in the same folder as this file, or update this <code>src</code> path.</p>
-          <img src="drawing-tools.png" alt="Professional Drawing Tools Screenshot" onerror="this.style.display='none'">
+        <div class="docs-image-placeholder" oncontextmenu="return false;"
+          onclick="expandImage('images/sr-detection.png')">
+
+          <img src="images/sr-detection.png" class="protected-image" alt="Support and Resistance Detection Screenshot"
+            onerror="this.style.display='none'">
         </div>
+
+        <ul class="docs-feature-list">
+          <li><strong>Strict Validation:</strong> Levels are only drawn if they have withstood at least 3 distinct price
+            bounces.</li>
+          <li><strong>Strength Scoring:</strong> S/R lines are visually weighted; thicker lines indicate stronger
+            historical significance.</li>
+          <li><strong>Click-to-Focus:</strong> Clicking any S/R level in the analytics panel instantly snaps your chart
+            to that exact price point.</li>
+        </ul>
+
+        <hr class="docs-divider">
+
+        <h2 id="market-theories">5. Live Market Theories & Candlestick Patterns</h2>
+        <p>Understanding market mechanics is crucial for success. TradeLine AI bridges the gap between theory and
+          practice by automatically identifying and labeling core candlestick patterns directly on the live chart.
+          Beginners can effortlessly understand underlying trading theories by interacting with the chart in real-time.
+        </p>
+
+        <!-- Image Placeholder -->
+        <div class="docs-image-placeholder" oncontextmenu="return false;"
+          onclick="expandImage('images/live-market-theory.png')">
+          <img src="images/live-market-theory.png" class="protected-image"
+            alt="Live Market Theory & Patterns Screenshot" onerror="this.style.display='none'">
+        </div>
+
+        <ul class="docs-feature-list">
+          <li><strong>Interactive Tooltips:</strong> Hover over any detected candlestick pattern (like a Southern Doji
+            or Inverted Hammer) to read a detailed explanation of its meaning and market psychology.</li>
+          <li><strong>Real-Time Learning:</strong> Learn as you trade by seeing textbook theories applied instantly to
+            current price action.</li>
+          <li><strong>Visual Indicators:</strong> Distinct up/down arrows and color-coding visually highlight bullish
+            and bearish setups at a glance.</li>
+        </ul>
+
+        <hr class="docs-divider">
+
+        <h2 id="pattern-detection">6. Live Market Pattern Detection</h2>
+        <p>Beyond individual candlesticks, TradeLine AI continuously monitors the broader market structure to detect
+          complex, multi-candle chart patterns as they form in real-time. This provides you with high-probability setup
+          alerts directly in the analytics panel.</p>
+
+        <!-- Image Placeholder -->
+        <div class="docs-image-placeholder" oncontextmenu="return false;"
+          onclick="expandImage('images/pattern-detection.png')">
+          <img src="images/pattern-detection.png" class="protected-image" alt="Detected Chart Patterns Screenshot"
+            onerror="this.style.display='none'">
+        </div>
+
+        <ul class="docs-feature-list">
+          <li><strong>Automated Detection:</strong> Instantly identifies formations like Double Tops, Head and
+            Shoulders, Wedges, and Flags without requiring manual drawing.</li>
+          <li><strong>Actionable Trade Setups:</strong> Each detected pattern provides mathematically calculated Entry,
+            Stop Loss, and Target (Take Profit) price levels.</li>
+          <li><strong>Probability Scoring:</strong> Displays the bias (Bullish/Bearish) and a confidence percentage
+            (e.g., 85%) based on historical pattern reliability.</li>
+        </ul>
 
       </div>
     </main>
   </div>
 
+  <!-- Image Expansion Modal -->
+  <div id="image-modal" class="image-modal" onclick="this.style.display='none'" oncontextmenu="return false;">
+    <span class="close-modal">&times;</span>
+    <img class="modal-content protected-image" id="expanded-img">
+  </div>
+  <script>
+    function expandImage(src) {
+      document.getElementById('expanded-img').src = src;
+      document.getElementById('image-modal').style.display = 'flex';
+    }
+  </script>
 </body>
+
 </html>

@@ -1,0 +1,188 @@
+import { fetchUserPredictions, updatePredictionResult, getCurrentSession } from '../api/supabaseClient.js';
+import { evaluateTradeOutcome } from '../api/geminiApi.js';
+
+import { getMarketCandles } from '../api/cryptoApi.js';
+
+export class PredictionHistory {
+  constructor(containerElement) {
+    this.container = containerElement;
+    this.predictions = [];
+    this.isLoading = false;
+  }
+
+  async init() {
+    this.render();
+    await this.loadData();
+  }
+
+  async loadData() {
+    this.isLoading = true;
+    this.render();
+    
+    try {
+      const session = await getCurrentSession();
+      if (!session || !session.user || !session.user.id) {
+        this.container.innerHTML = '<div style="padding:20px;">Please login to view AI History.</div>';
+        return;
+      }
+
+      this.predictions = await fetchUserPredictions(session.user.id);
+      
+      // Check for pending predictions that have expired
+      const now = new Date();
+      let needsReRender = false;
+      
+      for (const pred of this.predictions) {
+        if (pred.status === 'pending') {
+          const targetTime = new Date(pred.target_resolution_time);
+          if (now > targetTime) {
+            try {
+              console.log('Evaluating expired prediction:', pred.id);
+              // Fetch real historical candles
+              const marketData = await getMarketCandles(pred.symbol, pred.timeframe, 300);
+              const allCandles = marketData.data || [];
+              
+              const createdTimeSec = new Date(pred.created_at).getTime() / 1000;
+              const historicalCandles = allCandles.filter(c => c.time >= createdTimeSec);
+              
+              if (historicalCandles.length === 0) {
+                 // Fallback if no candles found in that range (or API issue)
+                 historicalCandles.push({ high: Number(pred.entry_price), low: Number(pred.entry_price) });
+              }
+
+              const result = await evaluateTradeOutcome(pred, historicalCandles);
+              const updated = await updatePredictionResult(pred.id, result, 'resolved');
+              
+              if (updated) {
+                Object.assign(pred, updated);
+                needsReRender = true;
+              }
+            } catch (evalErr) {
+              console.error('Failed to evaluate prediction:', evalErr);
+              alert('Evaluation error: ' + evalErr.message);
+            }
+          }
+        }
+      }
+
+      this.isLoading = false;
+      this.render();
+
+    } catch (err) {
+      console.error(err);
+      this.isLoading = false;
+      this.container.innerHTML = '<div style="padding:20px;">Error loading history.</div>';
+    }
+  }
+
+  formatColomboTime(isoString) {
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleString('en-US', { timeZone: 'Asia/Colombo', dateStyle: 'medium', timeStyle: 'short' });
+    } catch(e) {
+      return isoString;
+    }
+  }
+
+  render() {
+    if (this.isLoading && this.predictions.length === 0) {
+      this.container.innerHTML = '<div style="padding:20px;">Loading AI Prediction History...</div>';
+      return;
+    }
+
+    if (this.predictions.length === 0) {
+      this.container.innerHTML = '<div style="padding:20px;">No predictions found. Generate an AI signal first!</div>';
+      return;
+    }
+
+    if (!this.activeTab) this.activeTab = 'pending';
+
+    let html = '<div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">';
+    html += '<h2>AI Predictions History (Colombo Time)</h2>';
+    
+    const pendingActive = this.activeTab === 'pending' ? 'border-bottom: 2px solid #fbbf24; color: #fbbf24; cursor: default;' : 'color: #aaa; cursor: pointer;';
+    const resolvedActive = this.activeTab === 'resolved' ? 'border-bottom: 2px solid #10b981; color: #10b981; cursor: default;' : 'color: #aaa; cursor: pointer;';
+
+    html += `
+      <div style="display: flex; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+        <div id="tab-pending" style="padding: 5px 10px; font-weight: bold; transition: color 0.3s; ${pendingActive}">⏳ Pending</div>
+        <div id="tab-resolved" style="padding: 5px 10px; font-weight: bold; transition: color 0.3s; ${resolvedActive}">✅ Resolved</div>
+      </div>
+    `;
+
+    html += '<div class="history-list" style="display: flex; flex-direction: column; gap: 15px; overflow-y: auto; max-height: 70vh; padding-right: 10px;">';
+
+    const pendingPreds = this.predictions.filter(p => p.status === 'pending');
+    const resolvedPreds = this.predictions.filter(p => p.status !== 'pending');
+
+    const renderCard = (pred) => {
+      const isPending = pred.status === 'pending';
+      let statusColor = '#fbbf24'; // yellow
+      if (!isPending) {
+        statusColor = pred.status.includes('tp') ? '#10b981' : '#ef4444'; // green or red
+      }
+      const evalText = (pred.evaluation_result && pred.evaluation_result.feedback) 
+        ? pred.evaluation_result.feedback 
+        : (isPending ? 'Waiting for timeframe to complete...' : 'Evaluation failed.');
+
+      return `
+        <div class="history-card" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border-left: 4px solid ${statusColor};">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <strong>${pred.symbol} - ${pred.signal}</strong>
+            <span style="color: ${statusColor};">${isPending ? '⏳ Pending' : pred.status.toUpperCase()}</span>
+          </div>
+          <div style="font-size: 13px; color: #aaa; margin-bottom: 10px;">
+            <div>Created: ${this.formatColomboTime(pred.created_at)}</div>
+            <div>Target: ${this.formatColomboTime(pred.target_resolution_time)} (Duration: ${pred.expected_duration_text})</div>
+          </div>
+          <div style="display: flex; gap: 15px; font-size: 13px; margin-bottom: 10px;">
+            <div>Entry: $${pred.entry_price}</div>
+            <div>SL: $${pred.stop_loss_price}</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; font-size: 13px;">
+            ${evalText}
+          </div>
+        </div>
+      `;
+    };
+
+    if (this.activeTab === 'pending') {
+      if (pendingPreds.length > 0) {
+        pendingPreds.forEach(pred => html += renderCard(pred));
+      } else {
+        html += '<div style="color: #aaa; padding: 20px 0;">No pending predictions at the moment.</div>';
+      }
+    } else {
+      if (resolvedPreds.length > 0) {
+        resolvedPreds.forEach(pred => html += renderCard(pred));
+      } else {
+        html += '<div style="color: #aaa; padding: 20px 0;">No resolved predictions yet.</div>';
+      }
+    }
+
+    html += '</div></div>';
+    this.container.innerHTML = html;
+
+    const pendingTab = this.container.querySelector('#tab-pending');
+    const resolvedTab = this.container.querySelector('#tab-resolved');
+
+    if (pendingTab && this.activeTab !== 'pending') {
+      pendingTab.addEventListener('click', () => {
+        this.activeTab = 'pending';
+        this.render();
+      });
+      // Add simple hover effect
+      pendingTab.addEventListener('mouseenter', () => pendingTab.style.color = '#fff');
+      pendingTab.addEventListener('mouseleave', () => pendingTab.style.color = '#aaa');
+    }
+    
+    if (resolvedTab && this.activeTab !== 'resolved') {
+      resolvedTab.addEventListener('click', () => {
+        this.activeTab = 'resolved';
+        this.render();
+      });
+      resolvedTab.addEventListener('mouseenter', () => resolvedTab.style.color = '#fff');
+      resolvedTab.addEventListener('mouseleave', () => resolvedTab.style.color = '#aaa');
+    }
+  }
+}

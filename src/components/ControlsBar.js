@@ -8,6 +8,24 @@
  */
 import { POPULAR_PAIRS, TIMEFRAMES } from '../api/cryptoApi.js';
 
+const TIMEZONES = [
+  { value: 'local', label: 'System Local Time' },
+  { value: 'UTC', label: '(UTC) Standard Time' },
+  { value: 'Asia/Colombo', label: '(UTC+5:30) Colombo' },
+  { value: 'Asia/Kolkata', label: '(UTC+5:30) Kolkata' },
+  { value: 'Asia/Kathmandu', label: '(UTC+5:45) Kathmandu' },
+  { value: 'Asia/Dhaka', label: '(UTC+6:00) Dhaka' },
+  { value: 'Asia/Yangon', label: '(UTC+6:30) Yangon' },
+  { value: 'Asia/Bangkok', label: '(UTC+7:00) Bangkok' },
+  { value: 'Asia/Ho_Chi_Minh', label: '(UTC+7:00) Ho Chi Minh' },
+  { value: 'Asia/Jakarta', label: '(UTC+7:00) Jakarta' },
+  { value: 'Asia/Hong_Kong', label: '(UTC+8:00) Hong Kong' },
+  { value: 'Asia/Tokyo', label: '(UTC+9:00) Tokyo' },
+  { value: 'Europe/London', label: '(UTC+0:00) London' },
+  { value: 'Europe/Paris', label: '(UTC+1:00) Paris' },
+  { value: 'America/New_York', label: '(UTC-5:00) New York' }
+];
+
 export class ControlsBar {
   constructor(containerElement, options = {}) {
     this.container = containerElement;
@@ -21,7 +39,11 @@ export class ControlsBar {
       endDate: '',
       showSupport: false,
       showResistance: false,
+      showBB: false,
+      showRSI: false,
+      showMACD: false,
       showLabels: true, // Default to showing labels
+      timezone: 'local',
       zoomPct: 100,
       ...options.initialState
     };
@@ -72,29 +94,65 @@ export class ControlsBar {
             </div>
           </div>
 
-          <!-- Dynamic Timeframe Selector -->
-          <div class="control-group timeframe-group" title="Select preset timeframe or enter custom dynamic interval (Minutes, Hours, Days, Months, Years)">
+          <!-- Custom Timeframe Dropdown -->
+          <div class="control-group timeframe-group dropdown-group" title="Select custom timeframe interval">
             <label class="control-label">
-              Timeframe: <span class="accent-badge" id="current-tf-badge">${this.state.timeframe}</span>
-              <i class="info-icon" data-lucide="info" title="Select preset timeframe or enter custom dynamic interval"></i>
+              Timeframe:
+              <i class="info-icon" data-lucide="info" title="Select custom timeframe interval"></i>
             </label>
+            <div class="custom-dropdown-container">
+              <button type="button" class="dropdown-trigger" id="tf-dropdown-trigger">
+                <span id="current-tf-badge">${this.state.timeframe}</span>
+                <i data-lucide="chevron-down"></i>
+              </button>
+              <div class="dropdown-menu" id="tf-dropdown-menu">
+                <div class="dropdown-header" style="display: flex; gap: 5px; align-items: center; padding: 10px; border-bottom: 1px solid #2a2e39;">
+                  <i data-lucide="plus" style="width: 16px; height: 16px; color: #a3a6af;"></i>
+                  <input type="text" id="custom-tf-input" class="custom-tf-input" placeholder="Add custom interval..." style="background: transparent; border: none; color: #fff; font-size: 13px; outline: none; width: 100%;" />
+                  <button type="button" id="apply-custom-tf-btn" style="background: none; border: none; color: #3b82f6; cursor: pointer; display: none;">Add</button>
+                </div>
+                
+                <div class="dropdown-section">
+                  <div class="dropdown-section-title">SECONDS</div>
+                  <div class="dropdown-items">
+                    ${['1s', '5s', '10s', '15s', '30s', '45s'].map(tf => `
+                      <button type="button" class="dropdown-item ${tf === this.state.timeframe ? 'active' : ''}" data-tf="${tf}">${tf.replace('s', ' second')}${tf !== '1s' ? 's' : ''}</button>
+                    `).join('')}
+                  </div>
+                </div>
 
-            <div class="pill-buttons">
-              ${TIMEFRAMES.map(tf => `
-                <button 
-                  type="button"
-                  class="pill-btn ${tf.label === this.state.timeframe ? 'active' : ''}" 
-                  data-tf="${tf.label}">
-                  ${tf.label}
-                </button>
-              `).join('')}
+                <div class="dropdown-section">
+                  <div class="dropdown-section-title">MINUTES</div>
+                  <div class="dropdown-items">
+                    ${['1m', '2m', '3m', '5m', '10m', '15m', '30m', '45m'].map(tf => `
+                      <button type="button" class="dropdown-item ${tf === this.state.timeframe ? 'active' : ''}" data-tf="${tf}">${tf.replace('m', ' minute')}${tf !== '1m' ? 's' : ''}</button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <div class="dropdown-section">
+                  <div class="dropdown-section-title">HOURS / DAYS</div>
+                  <div class="dropdown-items">
+                    ${['1H', '2H', '3H', '4H', '1D'].map(tf => `
+                      <button type="button" class="dropdown-item ${tf === this.state.timeframe ? 'active' : ''}" data-tf="${tf}">
+                        ${tf.includes('H') ? tf.replace('H', ' hour') + (tf !== '1H' ? 's' : '') : tf.replace('D', ' day') + (tf !== '1D' ? 's' : '')}
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Visibility Controls Group -->
-          <div class="control-group zoom-group" title="Interactive chart controls">
-            <div class="zoom-controls">
-              <button type="button" id="toggle-labels-btn" class="pill-btn ${this.state.showLabels ? 'active' : ''}" title="Toggle visibility of chart markers and labels" style="margin-right: 10px; padding: 4px 8px; font-size: 11px;">
+          <!-- Timezone & Visibility Controls Group -->
+          <div class="control-group zoom-group" title="Timezone & Visibility">
+            <div class="zoom-controls" style="gap: 10px; display: flex; align-items: center;">
+              <select id="timezone-select" class="custom-select" style="min-width: 140px; padding: 4px 8px; font-size: 11px;">
+                ${TIMEZONES.map(tz => `
+                  <option value="${tz.value}" ${tz.value === this.state.timezone ? 'selected' : ''}>${tz.label}</option>
+                `).join('')}
+              </select>
+              <button type="button" id="toggle-labels-btn" class="pill-btn ${this.state.showLabels ? 'active' : ''}" title="Toggle visibility of chart markers and labels" style="padding: 4px 8px; font-size: 11px;">
                 <i data-lucide="${this.state.showLabels ? 'eye' : 'eye-off'}"></i> ${this.state.showLabels ? 'Labels On' : 'Labels Off'}
               </button>
             </div>
@@ -178,6 +236,23 @@ export class ControlsBar {
                 ↔ Extend / Fold Lines
               </button>
             </div>
+
+            <!-- Visual Indicators Toggles -->
+            <div class="control-group toggles-group" style="margin-left: 15px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 15px;">
+              <label class="control-label" style="display: block; margin-bottom: 5px;">Indicators:</label>
+              <label class="toggle-pill ${this.state.showBB ? 'active' : ''}" style="border-color: ${this.state.showBB ? '#3b82f6' : 'rgba(255,255,255,0.2)'};">
+                <input type="checkbox" id="toggle-bb" ${this.state.showBB ? 'checked' : ''} />
+                <span class="dot" style="background-color: #3b82f6;"></span> BB
+              </label>
+              <label class="toggle-pill ${this.state.showRSI ? 'active' : ''}" style="border-color: ${this.state.showRSI ? '#a855f7' : 'rgba(255,255,255,0.2)'};">
+                <input type="checkbox" id="toggle-rsi" ${this.state.showRSI ? 'checked' : ''} />
+                <span class="dot" style="background-color: #a855f7;"></span> RSI
+              </label>
+              <label class="toggle-pill ${this.state.showMACD ? 'active' : ''}" style="border-color: ${this.state.showMACD ? '#f59e0b' : 'rgba(255,255,255,0.2)'};">
+                <input type="checkbox" id="toggle-macd" ${this.state.showMACD ? 'checked' : ''} />
+                <span class="dot" style="background-color: #f59e0b;"></span> MACD
+              </label>
+            </div>
           </div>
         ` : ''}
       </div>
@@ -191,13 +266,14 @@ export class ControlsBar {
 
   attachEvents() {
     // Tab Listeners
-    const tabClean = this.container.querySelector('#tab-clean-chart');
+    const tabClean = this.container.querySelector('#tab-chart');
     const tabSR = this.container.querySelector('#tab-sr-detector');
 
     tabClean?.addEventListener('click', (e) => {
       e.preventDefault();
       this.state.showSupport = false;
       this.state.showResistance = false;
+      this.state.showLabels = false; // Turn off labels for pure chart
       this.render();
       this.onChange(this.state);
     });
@@ -206,6 +282,7 @@ export class ControlsBar {
       e.preventDefault();
       this.state.showSupport = true;
       this.state.showResistance = true;
+      this.state.showLabels = true; // Turn on labels for SR mode
       this.render();
       this.onChange(this.state);
     });
@@ -217,18 +294,65 @@ export class ControlsBar {
       this.onChange(this.state);
     });
 
-    // Timeframe buttons
-    const tfButtons = this.container.querySelectorAll('.pill-btn:not(#toggle-labels-btn)');
-    tfButtons.forEach(btn => {
+    // Timeframe Dropdown Logic
+    const tfDropdownTrigger = this.container.querySelector('#tf-dropdown-trigger');
+    const tfDropdownMenu = this.container.querySelector('#tf-dropdown-menu');
+    const tfDropdownContainer = this.container.querySelector('.custom-dropdown-container');
+
+    tfDropdownTrigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      tfDropdownMenu?.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (tfDropdownContainer && !tfDropdownContainer.contains(e.target)) {
+        tfDropdownMenu?.classList.remove('show');
+      }
+    });
+
+    const tfItems = this.container.querySelectorAll('.dropdown-item');
+    tfItems.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         this.state.timeframe = btn.getAttribute('data-tf');
-        tfButtons.forEach(b => b.classList.remove('active'));
+        tfItems.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const currentTfBadge = this.container.querySelector('#current-tf-badge');
         if (currentTfBadge) currentTfBadge.textContent = this.state.timeframe;
+        tfDropdownMenu?.classList.remove('show');
         this.onChange(this.state);
       });
+    });
+
+    const customTfInput = this.container.querySelector('#custom-tf-input');
+    const applyCustomTfBtn = this.container.querySelector('#apply-custom-tf-btn');
+
+    const applyCustomTimeframe = () => {
+      const val = customTfInput.value.trim();
+      if (val) {
+        this.state.timeframe = val;
+        const currentTfBadge = this.container.querySelector('#current-tf-badge');
+        if (currentTfBadge) currentTfBadge.textContent = this.state.timeframe;
+        tfDropdownMenu?.classList.remove('show');
+        this.onChange(this.state);
+      }
+    };
+
+    customTfInput?.addEventListener('input', (e) => {
+      if (e.target.value.trim().length > 0) {
+        applyCustomTfBtn.style.display = 'block';
+      } else {
+        applyCustomTfBtn.style.display = 'none';
+      }
+    });
+
+    customTfInput?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') applyCustomTimeframe();
+    });
+
+    applyCustomTfBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyCustomTimeframe();
     });
 
     // Toggle labels button
@@ -240,9 +364,13 @@ export class ControlsBar {
       this.onChange(this.state);
     });
 
-
-
-    // Min bounces select
+    // Timezone Select
+    const tzSelect = this.container.querySelector('#timezone-select');
+    tzSelect?.addEventListener('change', (e) => {
+      this.state.timezone = e.target.value;
+      this.onChange(this.state);
+      this.render();
+    });    // Min bounces select
     const bounceSelect = this.container.querySelector('#min-bounces-select');
     bounceSelect?.addEventListener('change', (e) => {
       this.state.minBounces = parseInt(e.target.value, 10);
@@ -263,13 +391,35 @@ export class ControlsBar {
     toggleSupport?.addEventListener('change', (e) => {
       this.state.showSupport = e.target.checked;
       this.onChange(this.state);
+      this.render(); // re-render to update toggle styles
     });
 
-    // Resistance toggle
     const toggleResistance = this.container.querySelector('#toggle-resistance');
     toggleResistance?.addEventListener('change', (e) => {
       this.state.showResistance = e.target.checked;
       this.onChange(this.state);
+      this.render();
+    });
+
+    const toggleBB = this.container.querySelector('#toggle-bb');
+    toggleBB?.addEventListener('change', (e) => {
+      this.state.showBB = e.target.checked;
+      this.onChange(this.state);
+      this.render();
+    });
+
+    const toggleRSI = this.container.querySelector('#toggle-rsi');
+    toggleRSI?.addEventListener('change', (e) => {
+      this.state.showRSI = e.target.checked;
+      this.onChange(this.state);
+      this.render();
+    });
+
+    const toggleMACD = this.container.querySelector('#toggle-macd');
+    toggleMACD?.addEventListener('change', (e) => {
+      this.state.showMACD = e.target.checked;
+      this.onChange(this.state);
+      this.render();
     });
 
     // Master Line Extender Button

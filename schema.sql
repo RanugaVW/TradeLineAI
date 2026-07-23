@@ -138,3 +138,35 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 9. AI Predictions History Table
+CREATE TABLE IF NOT EXISTS public.ai_predictions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  signal TEXT NOT NULL,
+  entry_price NUMERIC NOT NULL,
+  stop_loss_price NUMERIC NOT NULL,
+  take_profit_levels JSONB NOT NULL,
+  expected_duration_text TEXT NOT NULL,
+  target_resolution_time TIMESTAMPTZ NOT NULL,
+  target_colombo_time_text TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'resolved', 'expired')),
+  evaluation_result JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.ai_predictions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own predictions" ON public.ai_predictions;
+CREATE POLICY "Users can view own predictions" 
+  ON public.ai_predictions FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own predictions" ON public.ai_predictions;
+CREATE POLICY "Users can insert own predictions" 
+  ON public.ai_predictions FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own predictions" ON public.ai_predictions;
+CREATE POLICY "Users can update own predictions" 
+  ON public.ai_predictions FOR UPDATE USING (auth.uid() = user_id);
