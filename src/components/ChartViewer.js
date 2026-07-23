@@ -241,6 +241,30 @@ export class ChartViewer {
     resizeObserver.observe(this.container);
   }
 
+  setTimezone(timezone) {
+    if (!this.chart) return;
+    
+    const tz = timezone === 'local' ? Intl.DateTimeFormat().resolvedOptions().timeZone : timezone;
+    
+    const timeFmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+    const tickFmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+    
+    this.chart.applyOptions({
+      localization: {
+        timeFormatter: (time) => {
+          if (!time) return '';
+          return timeFmt.format(new Date((time.timestamp || time) * 1000));
+        }
+      },
+      timeScale: {
+        tickMarkFormatter: (time) => {
+          if (!time) return '';
+          return tickFmt.format(new Date((time.timestamp || time) * 1000));
+        }
+      }
+    });
+  }
+
   _initDrawingEngine() {
     try {
       this.drawingEngine = new DrawingEngine(this);
