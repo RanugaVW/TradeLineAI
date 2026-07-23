@@ -4455,3 +4455,62 @@ img.protected-image {
 .docs-image-placeholder {
   cursor: zoom-in;
 }
+
+/* Responsive Docs Layout */
+@media (max-width: 992px) {
+  .docs-layout {
+    flex-direction: column;
+  }
+  .docs-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+  }
+  .docs-nav-title {
+    margin-top: 0;
+    width: 100%;
+    text-align: center;
+  }
+  .docs-nav-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 24px;
+  }
+  .docs-content {
+    padding: 32px 24px;
+  }
+  .docs-article h1 {
+    font-size: 2.2rem;
+  }
+  .docs-article h2 {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .docs-header {
+    padding: 12px 16px;
+  }
+  .docs-brand {
+    font-size: 1rem;
+  }
+  .docs-content {
+    padding: 24px 16px;
+  }
+  .docs-article h1 {
+    font-size: 1.8rem;
+  }
+  .docs-article h2 {
+    font-size: 1.4rem;
+  }
+  .docs-image-placeholder {
+    padding: 16px;
+    min-height: 180px;
+  }
+}
