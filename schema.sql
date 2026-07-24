@@ -15,8 +15,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   postal_code TEXT,
   region TEXT,
   age INTEGER,
+  tos_accepted BOOLEAN DEFAULT false,
+  tos_accepted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_phone_number UNIQUE (phone_number)
 );
 
 -- Ensure columns exist
@@ -26,6 +29,20 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone_number TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS postal_code TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS region TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS age INTEGER;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tos_accepted BOOLEAN DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tos_accepted_at TIMESTAMPTZ;
+
+-- Early Bird Lifetime tracking columns
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS pro_subscribed_at TIMESTAMPTZ;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS early_bird_continuous BOOLEAN DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS early_bird_eligible BOOLEAN DEFAULT false;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_phone_number') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT unique_phone_number UNIQUE (phone_number);
+  END IF;
+END $$;
 
 -- 2. Create Chart Annotations Table
 CREATE TABLE IF NOT EXISTS public.chart_annotations (
@@ -68,6 +85,11 @@ DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" 
   ON public.profiles FOR SELECT 
   USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" 
+  ON public.profiles FOR INSERT 
+  WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" 

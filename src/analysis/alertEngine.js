@@ -33,7 +33,7 @@ export class AlertEngine {
       // Optionally play a sound
       try {
         const audio = new Audio('/alert-sound.mp3'); // We'll assume a file exists or just ignore if it doesn't
-        audio.play().catch(() => {}); // Catch autoplay restrictions
+        audio.play().catch(() => { }); // Catch autoplay restrictions
       } catch (e) {
         console.error('Audio play failed', e);
       }
@@ -45,9 +45,9 @@ export class AlertEngine {
     if (this.isActive) return;
     this.isActive = true;
     this.requestPermission();
-    
-    console.log('🚀 Alert Engine Started: Polling every 5 minutes...');
-    
+
+    console.log('Alert Engine Started: Polling every 5 minutes...');
+
     // Initial check immediately
     this.pollMarkets();
 

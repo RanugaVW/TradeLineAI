@@ -65,6 +65,12 @@
           <span>AI Alerts</span>
         </div>
 
+        <!-- Trial Timer (Hidden by default, shown for free tier users) -->
+        <div id="trial-timer-container" class="trial-timer-container hidden" title="Time remaining in Free Trial">
+          <i data-lucide="clock" style="width:16px;height:16px;"></i>
+          <span id="trial-timer-text">--:--:--:--</span>
+        </div>
+
         <!-- Supabase Auth / User Profile Header Section -->
         <div id="user-auth-container" class="auth-header-section"></div>
       </div>
@@ -88,17 +94,19 @@
           }
         </script>
         <div class="grok-landing">
-          
+
           <!-- Cinematic Light Flare on the Right -->
           <div class="grok-light-flare"></div>
 
           <!-- Massive Background Text with Typing Animation -->
           <div class="grok-bg-text type-anim">
-            <span style="font-weight: 900;">Trade</span><span style="font-weight: 400;">Line</span> <span style="font-weight: 900;">AI</span>
+            <span style="font-weight: 900;">Trade</span><span style="font-weight: 400;">Line</span> <span
+              style="font-weight: 900;">AI</span>
           </div>
 
           <!-- Restored Blazity Layout Content over the new background -->
-          <div class="blazity-container" style="position: relative; z-index: 10; margin: auto;">
+          <div class="blazity-container"
+            style="position: relative; z-index: 10; margin: 100px auto 40px auto; flex-shrink: 0;">
             <!-- Left Hero Content -->
             <div class="blazity-hero-text">
               <div class="blazity-brand" style="color: white; opacity: 0.8;">
@@ -121,10 +129,12 @@
               </p>
 
               <div class="blazity-cta-group">
-                <button type="button" id="lock-screen-signin-btn" class="blazity-btn-primary" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; backdrop-filter: blur(5px);">
+                <button type="button" id="lock-screen-signin-btn" class="blazity-btn-primary"
+                  style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; backdrop-filter: blur(5px);">
                   Access Terminal
                 </button>
-                <a href="docs.html" class="blazity-btn-secondary" style="color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2);">
+                <a href="docs.html" class="blazity-btn-secondary"
+                  style="color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2);">
                   View Documentation
                 </a>
               </div>
@@ -132,7 +142,8 @@
 
             <!-- Right Hero Graphic / App Mockup -->
             <div class="blazity-hero-graphic">
-              <div class="app-mockup-window" style="background: rgba(13, 17, 26, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+              <div class="app-mockup-window"
+                style="background: rgba(13, 17, 26, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
                 <div class="mockup-header" style="border-bottom-color: rgba(255, 255, 255, 0.1);">
                   <span class="dot red"></span>
                   <span class="dot yellow"></span>
@@ -198,7 +209,8 @@
                     <!-- The Breakout -->
                     <div class="candle-anim-group anim-8">
                       <div class="faux-wick" style="height: 80px; left: 82%; top: 140px;"></div>
-                      <div class="faux-candle up breakout-glow" style="height: 60px; left: calc(82% - 3px); top: 150px;"></div>
+                      <div class="faux-candle up breakout-glow"
+                        style="height: 60px; left: calc(82% - 3px); top: 150px;"></div>
                       <div class="faux-price-tag" style="top: 150px; left: 85%;">$0.0934</div>
                     </div>
 
@@ -207,6 +219,70 @@
               </div>
             </div>
           </div>
+
+          <!-- Pricing Section -->
+          <div class="pricing-section" style="flex-shrink: 0; padding-bottom: 100px;">
+            <div class="pricing-header">
+              <h2>Plans for every level of ambition</h2>
+
+              <div class="early-bird-banner">
+                <div class="early-bird-icon">
+                  <i data-lucide="gift"></i>
+                </div>
+                <div class="early-bird-content">
+                  <h3>Early Bird Lifetime Guarantee</h3>
+                  <p>
+                    Since this is a developing platform, early users who subscribe to the <strong>Pro 1 Plan
+                      ($3)</strong> will lock in this price forever!
+                    As a premium early buyer, you must maintain your Pro 1 plan <strong>continuously every month until January 1, 2027</strong>. 
+                    If you do so, you will be automatically upgraded to all future higher-tier plans at no extra cost, and your future payments will never exceed $3!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pricing-cards">
+              <!-- Free Tier -->
+              <div class="pricing-card">
+                <h3>Free Tier</h3>
+                <div class="pricing-price">$0 <span>/ 3 days max</span></div>
+                <p class="pricing-desc">Explore the platform with basic charting capabilities.</p>
+
+                <ul class="pricing-features">
+                  <li><i data-lucide="check" class="check"></i> Basic Charting Interface</li>
+                  <li><i data-lucide="check" class="check"></i> Limited Manual Tools</li>
+                  <li><i data-lucide="x" class="cross"></i> No AI Market Advisor</li>
+                  <li><i data-lucide="x" class="cross"></i> No Automated S/R Zones</li>
+                  <li><i data-lucide="x" class="cross"></i> 3-Day Account Expiration</li>
+                </ul>
+
+                <button class="pricing-btn free"
+                  onclick="alert('You are automatically enrolled in the Free Tier upon registration.')">Included with
+                  Registration</button>
+              </div>
+
+              <!-- Pro 1 Tier -->
+              <div class="pricing-card pro-tier">
+                <h3>Pro 1 Tier</h3>
+                <div class="pricing-price">$3 <span>/ mo</span></div>
+                <p class="pricing-desc">Full access to AI-driven insights and automated analysis.</p>
+
+                <ul class="pricing-features">
+                  <li><i data-lucide="check" class="check"></i> <strong>Full AI Advisor Access</strong></li>
+                  <li><i data-lucide="check" class="check"></i> Automated Support/Resistance</li>
+                  <li><i data-lucide="check" class="check"></i> Unlimited AI Polling</li>
+                  <li><i data-lucide="check" class="check"></i> LKR Budget Optimization</li>
+                  <li><i data-lucide="check" class="check"></i> Lifetime Account Access</li>
+                </ul>
+
+                <button class="pricing-btn pro"
+                  onclick="alert('Please contact the System Admin to process your payment and upgrade your account manually.')">Buy
+                  Pro 1</button>
+              </div>
+            </div>
+          </div>
+          <!-- End Pricing Section -->
+
         </div>
       </div>
 
@@ -227,16 +303,142 @@
   <div id="ai-modal-overlay" class="ai-modal-overlay"></div>
 
   <!-- AI Prediction History Modal -->
-  <div id="ai-history-modal-overlay" class="ai-modal-overlay" style="display: none; justify-content: center; align-items: center; z-index: 10000; position: fixed; inset: 0; background: rgba(0,0,0,0.8);">
-    <div class="ai-modal-content" style="width: 800px; max-width: 95%; max-height: 90vh; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column;">
-      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color);">
+  <div id="ai-history-modal-overlay" class="ai-modal-overlay"
+    style="display: none; justify-content: center; align-items: center; z-index: 10000; position: fixed; inset: 0; background: rgba(0,0,0,0.8);">
+    <div class="ai-modal-content"
+      style="width: 800px; max-width: 95%; max-height: 90vh; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column;">
+      <div class="modal-header"
+        style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color);">
         <h2 style="margin: 0;">AI Prediction History & Feedback</h2>
-        <button id="close-history-modal-btn" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
+        <button id="close-history-modal-btn"
+          style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
       </div>
       <div id="ai-history-container" style="flex: 1; overflow-y: auto; overflow-x: hidden;"></div>
     </div>
   </div>
 
+  <!-- Terms of Service Modal (Hidden by default) -->
+  <div id="tos-modal" class="hidden">
+    <div class="tos-content">
+      <div class="tos-header">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#f97316" stroke-width="2" fill="none">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <h2>Terms of Service & Policy Agreement</h2>
+      </div>
+
+      <div class="tos-body">
+        <p>Welcome to TradeLine AI. By accessing, browsing, or using our terminal and analytical services, you
+          acknowledge that you have read, understood, and agree to be bound by these comprehensive Terms of Service and
+          Policy Agreement.</p>
+
+        <div class="tos-section">
+          <h3>1. Probabilistic Nature of Artificial Intelligence and Market Volatility</h3>
+          <p>TradeLine AI provides technical analysis, charting tools, and automated trading signals derived from highly
+            advanced, machine-learning-based artificial intelligence models. You explicitly acknowledge and agree that
+            these models operate on a strictly probabilistic basis. Financial markets, especially cryptocurrency
+            markets, are inherently unpredictable, highly volatile, and subject to sudden, severe fluctuations caused by
+            external macroeconomic events, regulatory actions, and market manipulation. The platform, including all
+            generated signals, Support/Resistance zones, trend analysis, and predictive models, does
+            <strong>not</strong> guarantee any degree of accuracy, reliability, or profitability. Past performance of
+            our AI models is strictly not indicative of future results.
+          </p>
+        </div>
+
+        <div class="tos-section">
+          <h3>2. No Financial, Legal, or Tax Advice Provided</h3>
+          <p>All information, data, metrics, and automated insights provided by TradeLine AI are strictly for
+            informational, educational, and analytical purposes only. Nothing contained within the platform constitutes
+            financial advice, investment advice, trading advice, legal advice, or tax advice. We are not registered
+            brokers, financial advisors, or fiduciaries. You agree that you are solely responsible for conducting your
+            own independent research, risk assessment, and due diligence before executing any trades or financial
+            decisions. TradeLine AI shall not be held liable for any interpretations made based on our data.</p>
+        </div>
+
+        <div class="tos-section">
+          <h3>3. Absolute No-Refund Policy and Payment Finality</h3>
+          <p>Due to the immediate, digital, and computationally intensive nature of the TradeLine AI platform and the
+            proprietary algorithms utilized, you agree that <strong>all payments, subscriptions, and transactions are
+              absolute and final</strong>. We enforce a strict zero-refund policy. Under no circumstances will refunds,
+            prorated credits, or chargebacks be issued, including but not limited to cases involving dissatisfaction
+            with AI predictions, trading losses incurred while using the platform, account suspension due to Terms of
+            Service violations, temporary or permanent system downtime, maintenance windows, API rate limits, or
+            discontinuation of specific platform features.</p>
+        </div>
+
+        <div class="tos-section">
+          <h3>4. Comprehensive Release of Liability and Indemnification</h3>
+          <p>To the maximum extent permitted by applicable law, you explicitly, unconditionally, and irrevocably
+            release, discharge, and hold harmless the developers, creators, owners, affiliates, employees, and agents of
+            TradeLine AI from any and all claims, liabilities, damages, losses, legal actions, or demands arising out of
+            or in connection with your use of the platform. This includes, but is not limited to, direct or indirect
+            financial losses, loss of capital, loss of profits, emotional distress, hardware failures, API latency,
+            exchange outages, or technical malfunctions. You agree to indemnify and defend TradeLine AI against any
+            third-party claims resulting from your misuse of the platform or violation of these terms.</p>
+        </div>
+
+        <div class="tos-section">
+          <h3>5. Platform Availability and Modification of Terms</h3>
+          <p>TradeLine AI is provided on an "AS IS" and "AS AVAILABLE" basis without any warranties of any kind, either
+            express or implied. We reserve the right to modify, suspend, or permanently discontinue any aspect of the
+            platform, including the underlying AI models, without prior notice. Furthermore, we reserve the right to
+            amend these Terms of Service at our sole discretion at any time. Continued use of the platform following any
+            modifications constitutes your formal acceptance of the revised terms.</p>
+        </div>
+      </div>
+
+      <div class="tos-footer">
+        <label class="tos-checkbox-container">
+          <input type="checkbox" id="tos-checkbox">
+          <span class="tos-checkmark"></span>
+          <span class="tos-checkbox-label">I have read, understood, and agree to the Terms of Service and Policy
+            Agreement.</span>
+        </label>
+        <button id="tos-accept-btn" class="blazity-btn-primary" disabled>Accept & Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upgrade to Pro Paywall Modal -->
+  <div id="paywall-modal" class="paywall-modal-overlay hidden">
+    <div class="paywall-content">
+      <div class="paywall-header">
+        <h2>
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="var(--accent-orange)" stroke-width="2" fill="none">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+          </svg>
+          Upgrade Required
+        </h2>
+        <button id="close-paywall-btn" class="paywall-close">&times;</button>
+      </div>
+      <div class="pricing-section" style="margin: 30px auto; max-width: 800px;">
+        <div class="pricing-header" style="margin-bottom: 30px;">
+          <h3 style="color: white; font-size: 1.5rem; font-weight: 400;">You need to update to the Pro 1 plan to get
+            this feature.</h3>
+        </div>
+        <div class="pricing-cards">
+          <!-- Pro 1 Tier -->
+          <div class="pricing-card pro-tier" style="max-width: 100%;">
+            <h3>Pro 1 Tier</h3>
+            <div class="pricing-price">$3 <span>/ mo</span></div>
+            <p class="pricing-desc">Full access to AI-driven insights and automated analysis.</p>
+
+            <ul class="pricing-features">
+              <li><i data-lucide="check" class="check"></i> <strong>Full AI Advisor Access</strong></li>
+              <li><i data-lucide="check" class="check"></i> Automated Support/Resistance</li>
+              <li><i data-lucide="check" class="check"></i> Unlimited AI Polling</li>
+              <li><i data-lucide="check" class="check"></i> LKR Budget Optimization</li>
+              <li><i data-lucide="check" class="check"></i> Lifetime Account Access</li>
+            </ul>
+
+            <button class="pricing-btn pro"
+              onclick="alert('Please contact the System Admin to process your payment and upgrade your account manually.')">Buy
+              Pro 1</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <script src="./src/neuro-bg.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>

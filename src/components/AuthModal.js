@@ -334,7 +334,11 @@ export class AuthModal {
               Please copy your actual <code>anon</code> <code>public</code> API Key from your <a href="https://supabase.com/dashboard/project/sucurpxaeojyawgherrf/settings/api" target="_blank" style="color: #60a5fa; text-decoration: underline;">Supabase Dashboard (Project Settings ➔ API)</a> and paste it into your <code>.env</code> file.
             `;
           } else {
-            errorElem.textContent = err.message || 'Registration failed.';
+            let errorText = err.message || err.error_description || 'Registration failed.';
+            if (errorText === '{}' || errorText === '[object Object]') {
+              errorText = 'Registration failed. A user with this phone number or email may already exist, or the server rejected the request.';
+            }
+            errorElem.textContent = errorText;
           }
           errorElem.classList.remove('hidden');
         } finally {

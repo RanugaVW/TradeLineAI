@@ -9,7 +9,7 @@ import { DrawingToolbar } from './components/DrawingToolbar.js';
 import { FavoritesToolbar } from './components/FavoritesToolbar.js';
 import { AdminPanel } from './components/AdminPanel.js';
 import { AITradePanel } from './components/AITradePanel.js';
-import { supabase, getCurrentSession, fetchUserProfile, saveUserAnnotations, loadUserAnnotations, subscribeToProfileChanges, subscribeToAnnotationChanges } from './api/supabaseClient.js';
+import { supabase, getCurrentSession, fetchUserProfile, saveUserAnnotations, loadUserAnnotations, subscribeToProfileChanges, subscribeToAnnotationChanges, acceptTermsOfService, signOutUser } from './api/supabaseClient.js';
 import { alertEngine } from './analysis/alertEngine.js';
 import { BacktestModal } from './components/BacktestModal.js';
 import { PredictionHistory } from './components/PredictionHistory.js';
@@ -76,6 +76,16 @@ class App {
     this.aiTradePanel = new AITradePanel(aiTradeElem, {
       onApplyAIOverlay: (aiData) => this.chartViewer.renderAITradeOverlay(aiData),
       onResetAIOverlay: () => this.chartViewer.clearAITradeOverlay(),
+      onBeforeOpen: () => {
+        if (this.userProfile && this.userProfile.role === 'free') {
+          const paywallModal = document.getElementById('paywall-modal');
+          if (paywallModal) {
+            paywallModal.classList.remove('hidden');
+          }
+          return false; // Prevent opening
+        }
+        return true; // Allow opening for Pro/Admin
+      },
       onTogglePanel: () => {
         // Give the DOM time to update then ask the chart to resize to fill new space
         setTimeout(() => {
@@ -92,6 +102,14 @@ class App {
         }, 80);
       }
     });
+
+    // Close Paywall Button listener
+    const closePaywallBtn = document.getElementById('close-paywall-btn');
+    if (closePaywallBtn) {
+      closePaywallBtn.addEventListener('click', () => {
+        document.getElementById('paywall-modal').classList.add('hidden');
+      });
+    }
 
     // Initialize Backtest Modal
     this.backtestModal = new BacktestModal(document.body);
@@ -333,13 +351,122 @@ class App {
   updateLockScreenState() {
     const lockOverlay = document.getElementById('auth-lock-overlay');
     const appElem = document.getElementById('app');
+    const tosModal = document.getElementById('tos-modal');
 
     if (!this.currentUser) {
       appElem?.classList.add('logged-out-mode');
       lockOverlay?.classList.remove('hidden');
+      tosModal?.classList.add('hidden');
     } else {
-      appElem?.classList.remove('logged-out-mode');
-      lockOverlay?.classList.add('hidden');
+      // 1. Enforce 3-Day Free Trial Limit
+      if (this.userProfile && this.userProfile.role === 'free' && this.userProfile.created_at) {
+        const createdTime = new Date(this.userProfile.created_at).getTime();
+        const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+        
+        if (Date.now() - createdTime > threeDaysMs) {
+          alert('Your 3-day free trial has expired. Please make a payment and contact an admin to upgrade your account.');
+          signOutUser().then(() => {
+            window.location.reload();
+          });
+          return;
+        } else {
+          this.startTrialCountdown(createdTime, threeDaysMs);
+        }
+      } else {
+        // If not free tier, hide the timer
+        const timerContainer = document.getElementById('trial-timer-container');
+        if (timerContainer) timerContainer.classList.add('hidden');
+        if (this.trialTimerInterval) clearInterval(this.trialTimerInterval);
+      }
+
+      // 2. Check if ToS is accepted (null, undefined, or false means not accepted)
+      if (this.userProfile && this.userProfile.tos_accepted !== true) {
+        appElem?.classList.add('logged-out-mode');
+        lockOverlay?.classList.add('hidden'); // Hide login lock
+        tosModal?.classList.remove('hidden'); // Show ToS modal
+        this.initTosModal();
+      } else {
+        appElem?.classList.remove('logged-out-mode');
+        lockOverlay?.classList.add('hidden');
+        tosModal?.classList.add('hidden');
+      }
+    }
+  }
+
+  startTrialCountdown(createdTime, threeDaysMs) {
+    const timerContainer = document.getElementById('trial-timer-container');
+    const timerText = document.getElementById('trial-timer-text');
+    if (!timerContainer || !timerText) return;
+
+    timerContainer.classList.remove('hidden');
+    if (this.trialTimerInterval) clearInterval(this.trialTimerInterval);
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const timeElapsed = now - createdTime;
+      const timeLeft = threeDaysMs - timeElapsed;
+
+      if (timeLeft <= 0) {
+        clearInterval(this.trialTimerInterval);
+        timerText.innerText = "00:00:00:00";
+        alert('Your 3-day free trial has expired. Please make a payment and contact an admin to upgrade your account.');
+        signOutUser().then(() => {
+          window.location.reload();
+        });
+        return;
+      }
+
+      // Calculate days, hours, minutes, seconds
+      const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+      const d = String(days).padStart(2, '0');
+      const h = String(hours).padStart(2, '0');
+      const m = String(minutes).padStart(2, '0');
+      const s = String(seconds).padStart(2, '0');
+
+      timerText.innerText = `${d}:${h}:${m}:${s}`;
+    };
+
+    updateTimer(); // run immediately once
+    this.trialTimerInterval = setInterval(updateTimer, 1000);
+  }
+
+  initTosModal() {
+    if (this._tosInitialized) return;
+    this._tosInitialized = true;
+    
+    const checkbox = document.getElementById('tos-checkbox');
+    const acceptBtn = document.getElementById('tos-accept-btn');
+    
+    if (checkbox && acceptBtn) {
+      checkbox.addEventListener('change', (e) => {
+        acceptBtn.disabled = !e.target.checked;
+      });
+      
+      acceptBtn.addEventListener('click', async () => {
+        acceptBtn.disabled = true;
+        acceptBtn.textContent = 'Accepting...';
+        
+        try {
+          const res = await acceptTermsOfService(this.currentUser.id);
+          if (res.success) {
+            this.userProfile.tos_accepted = true;
+            this.updateLockScreenState();
+          } else {
+            alert(`Error accepting terms: ${res.error}. Make sure you have run the schema.sql update in Supabase.`);
+            acceptBtn.disabled = false;
+            acceptBtn.textContent = 'Accept & Continue';
+          }
+        } catch(err) {
+          console.error(err);
+          alert(`Network/Client error: ${err.message}`);
+          acceptBtn.disabled = false;
+          acceptBtn.textContent = 'Accept & Continue';
+        }
+      });
     }
   }
 
