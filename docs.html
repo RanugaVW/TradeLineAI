@@ -99,28 +99,27 @@
 
         <hr class="docs-divider">
 
-        <h2 id="market-structure">3. Smart Money Market Structure (Trend Detection)</h2>
+        <h2 id="market-structure">3. Smart Money Market Structure (SMC)</h2>
         <p>TradeLine AI doesn't rely on lagging moving averages to determine the trend. Instead, it uses pure price
           action and <strong>Smart Money Concepts (SMC)</strong> to identify the true market trend in real-time by
-          tracking swing highs and swing lows.</p>
+          tracking swing highs, swing lows, and institutional imbalances.</p>
 
         <!-- Image Placeholder -->
         <div class="docs-image-placeholder" oncontextmenu="return false;"
-          onclick="expandImage('images/market-structure.png')">
-          <img src="images/market-structure.png" class="protected-image" alt="Market Structure & Smart Money Screenshot"
+          onclick="expandImage('images/smc-live.png')">
+          <img src="images/smc-live.png" class="protected-image" alt="Smart Money Concepts (FVG, BOS, CHoCH) Screenshot"
             onerror="this.style.display='none'">
         </div>
 
         <ul class="docs-feature-list">
+          <li><strong>FVG (Fair Value Gaps):</strong> Also known as imbalances. When price moves so aggressively that buyers and sellers are unable to fairly transact, it leaves a gap (highlighted as green or red boxes on the chart). These zones act as highly probable magnetic targets and support/resistance zones for future price action.</li>
           <li><strong>BOS (Break of Structure):</strong> This indicates trend continuation. In an uptrend, a BOS occurs
             when a candle closes above the most recent swing high. In a downtrend, it happens when price closes below
             the most recent swing low.</li>
           <li><strong>CHoCH (Change of Character):</strong> This signals a trend reversal. If we are in an uptrend and
             the price suddenly drops and closes below the most recent swing low, a Bearish CHoCH is triggered, instantly
             flipping the system's trend detection to a Downtrend.</li>
-          <li><strong>Structure State:</strong> The analytics panel keeps a running log of every BOS and CHoCH event,
-            providing you with a clear, objective view of whether the current trend structure is intact or breaking
-            down.</li>
+          <li><strong>AI Analysis Integration:</strong> All live SMC data, including FVGs and Order Blocks, are fed directly into the Gemini AI Engine to provide institutional-grade trading context.</li>
         </ul>
 
         <hr class="docs-divider">
