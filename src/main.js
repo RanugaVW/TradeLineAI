@@ -638,7 +638,10 @@ class App {
     if (this.chartViewer.showSMC !== state.showSMC) {
       if (state.showSMC && this.userProfile && this.userProfile.role === 'free') {
         if (this.isFullyInitialized) {
-          alert('Smart Money Concepts (SMC) is an exclusive Pro 1 feature. Please upgrade your account to unlock this indicator.');
+          const paywallModal = document.getElementById('paywall-modal');
+          if (paywallModal) {
+            paywallModal.classList.remove('hidden');
+          }
         }
         // Revert UI toggle silently
         this.controlsBar.state.showSMC = false;
