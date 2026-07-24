@@ -35,6 +35,7 @@ export class AITradePanel {
     this.onApplyAIOverlay = options.onApplyAIOverlay || (() => { });
     this.onResetAIOverlay = options.onResetAIOverlay || (() => { });
     this.onTogglePanel = options.onTogglePanel || (() => { });
+    this.onBeforeOpen = options.onBeforeOpen || (() => true);
 
     this.initRate();
     this.render();
@@ -60,6 +61,9 @@ export class AITradePanel {
     if (this.isOpen) {
       this.closePanel();
     } else {
+      if (this.onBeforeOpen && this.onBeforeOpen() === false) {
+        return;
+      }
       this.openPanel();
     }
   }
@@ -76,6 +80,9 @@ export class AITradePanel {
   }
 
   openPanel() {
+    if (this.onBeforeOpen && this.onBeforeOpen() === false) {
+      return; // Paywall or logic prevented opening
+    }
     this.isClosed = false;
     this.isOpen = true;
     this.render();

@@ -135,6 +135,12 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
   const detectedChartPats = patterns?.chartPatterns?.length > 0
     ? patterns.chartPatterns.map(cp => `${cp.name} [${cp.type}]: ${cp.desc}`).join(' | ')
     : 'None detected';
+    
+  // New Quantitative Indicators
+  const ema = patterns?.indicators?.ema || { ema20: currentPrice, ema50: currentPrice, ema200: currentPrice };
+  const atr = patterns?.indicators?.atr || 0;
+  const bb = patterns?.indicators?.bollingerBands || { upper: currentPrice, middle: currentPrice, lower: currentPrice };
+  const volatilityState = (bb.upper - bb.lower) / currentPrice < 0.02 ? 'SQUEEZE (Low Volatility)' : 'EXPANDING (High Volatility)';
 
   const userContextSection = userContext && userContext.trim() !== ''
     ? `\n=== [CRITICAL] USER PROVIDED FUNDAMENTALS & NEWS ===\n${userContext.trim()}\n\n(CRITICAL INSTRUCTION: The user has manually provided this fundamental context. You MUST heavily weigh these fundamental factors alongside the technical data below to form your final analysis!)\n`
@@ -187,6 +193,10 @@ Key Resistance Ceilings: ${resistanceLines.slice(0, 5).map(r => `$${r.price.toFi
 ▸ Chart Reversal Patterns (Double Top/Bottom):
   ${detectedChartPats}
 
+=== ADVANCED QUANTITATIVE INDICATORS ===
+▸ EMAs: EMA20: $${ema.ema20.toFixed(4)} | EMA50: $${ema.ema50.toFixed(4)} | EMA200: $${ema.ema200.toFixed(4)}
+▸ Average True Range (ATR 14): $${atr.toFixed(4)} (Use this to calculate a safe Stop Loss buffer!)
+▸ Bollinger Bands (20,2): Upper $${bb.upper.toFixed(4)} | Middle $${bb.middle.toFixed(4)} | Lower $${bb.lower.toFixed(4)} (Status: ${volatilityState})
 ▸ RSI (14): ${rsiVal} — Status: ${rsiStatus}
 ▸ Stochastic RSI (SRSI): ${srsiText}
 ▸ MACD Signal: ${macdCross}
@@ -200,18 +210,23 @@ Key Resistance Ceilings: ${resistanceLines.slice(0, 5).map(r => `$${r.price.toFi
   ${fibSection}
 
 === YOUR TASK ===
-Analyze this complete technical picture for the ${tradeDuration} timeframe and generate an optimized trade plan.
+Analyze this complete technical picture for the ${tradeDuration} timeframe and generate an optimized, HIGH-ACCURACY trade plan.
 ${imageBase64 ? 'I have also attached a screenshot of the chart with indicators (like RSI and SRSI) for your visual analysis. Please cross-reference the visual cues (such as divergences or trend continuation patterns) with the mathematical data provided above to confirm the trend direction.' : ''}
 Factor in: candlestick bias, BOS/CHoCH structure shifts, institutional order blocks, FVG fill targets, VWAP bias, RSI/MACD momentum, divergences, and Fibonacci confluence.
 
+**CRITICAL ACCURACY RULES (MUST FOLLOW):**
+1. **No Forced Trades:** If confluence is low or signals are conflicting, you MUST output a "HOLD" signal. Only suggest "BUY" or "SELL" if you have >70% confidence.
+2. **Volatility-Safe Stop Loss:** Market noise and wicks frequently stop out tight trades. You MUST place the Stop Loss safely behind the furthest Support/Resistance level, Order Block, or FVG, AND add a 2-5% volatility buffer so the trade has room to breathe. DO NOT place tight Stop Losses.
+3. **Risk-to-Reward (R:R):** Ensure the distance to TP2 provides at least a 1:2 Risk-to-Reward ratio compared to your safe Stop Loss.
+
 Output a strict JSON object (no markdown, no backticks) with these exact fields:
 1. "signal": "BUY" | "STRONG BUY" | "SELL" | "STRONG SELL" | "HOLD"
-2. "confidence": integer 50–95 (factoring in confluence of multiple signals)
+2. "confidence": integer 50–100 (must be >= 70 for BUY/SELL)
 3. "analysis": 3–4 sentence explanation referencing the specific detected patterns above and why they support this trade.
 4. "entryPrice": optimal entry price in USD (use S/R, OB, or FVG fill logic)
 5. "takeProfitLevels": array of exactly 3 objects: [{"price": TP1, "percentage": profit_pct1}, {"price": TP2, "percentage": profit_pct2}, {"price": TP3, "percentage": profit_pct3}]. Provide progressive targets.
-6. "stopLossPrice": stop loss price in USD (below key support or OB for buys, above resistance for sells)
-7. "stopLossReason": short string explaining why the SL is placed at this specific price.
+6. "stopLossPrice": stop loss price in USD (must be wide enough to survive market wicks)
+7. "stopLossReason": short string explaining why the SL is placed safely here.
 8. "expectedDuration": string estimating time to hit TP3 based on timeframe (e.g. "3 to 6 hours", "2 to 4 days").
 
 Respond ONLY with valid raw JSON.

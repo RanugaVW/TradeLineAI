@@ -87,21 +87,22 @@ export async function signUpUser(email, password, metadata = {}) {
 
   // Ensure profile row created with metadata
   if (data.user) {
-    try {
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        email,
-        role: 'free',
-        country_code: metadata.country_code || '',
-        country_name: metadata.country_name || '',
-        phone_number: metadata.phone_number || '',
-        postal_code: metadata.postal_code || '',
-        region: metadata.region || '',
-        age: metadata.age || 18,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-    } catch (e) {
-      console.warn('Profile upsert note:', e.message);
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: data.user.id,
+      email,
+      role: 'free',
+      country_code: metadata.country_code || '',
+      country_name: metadata.country_name || '',
+      phone_number: metadata.phone_number || '',
+      postal_code: metadata.postal_code || '',
+      region: metadata.region || '',
+      age: metadata.age || 18,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+
+    if (profileError) {
+      // If profile fails (e.g. duplicate phone), we should ideally clean up auth or inform the user
+      throw new Error(`Profile Error: ${profileError.message || profileError.details || JSON.stringify(profileError)}`);
     }
   }
   return data;
@@ -155,6 +156,24 @@ export async function fetchUserProfile(userId) {
     return data;
   } catch (err) {
     return { id: userId, role: 'free' };
+  }
+}
+
+export async function acceptTermsOfService(userId) {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        tos_accepted: true,
+        tos_accepted_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (err) {
+    console.error('Error accepting ToS:', err.message);
+    return { success: false, error: err.message };
   }
 }
 

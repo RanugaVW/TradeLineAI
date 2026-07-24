@@ -1229,6 +1229,51 @@ function calculateTechnicalIndicators(candles) {
   const currentVol = volumes[volumes.length - 1];
   const isVolumeSpike = currentVol > (avgVol * 1.8);
 
+  // Calculate EMAs
+  const ema20 = calculateEMA(closes, 20);
+  const ema50 = calculateEMA(closes, 50);
+  const ema200 = calculateEMA(closes, 200);
+  const currentEma20 = ema20.length > 0 ? parseFloat(ema20[ema20.length - 1].toFixed(4)) : closes[closes.length - 1];
+  const currentEma50 = ema50.length > 0 ? parseFloat(ema50[ema50.length - 1].toFixed(4)) : closes[closes.length - 1];
+  const currentEma200 = ema200.length > 0 ? parseFloat(ema200[ema200.length - 1].toFixed(4)) : closes[closes.length - 1];
+
+  // Calculate ATR (14)
+  const trList = [];
+  for (let i = 1; i < candles.length; i++) {
+    const c = candles[i];
+    const prevC = candles[i - 1];
+    const hl = c.high - c.low;
+    const hc = Math.abs(c.high - prevC.close);
+    const lc = Math.abs(c.low - prevC.close);
+    trList.push(Math.max(hl, hc, lc));
+  }
+  let atr = 0;
+  if (trList.length >= 14) {
+    let trSum = 0;
+    for (let i = 0; i < 14; i++) trSum += trList[i];
+    atr = trSum / 14;
+    for (let i = 14; i < trList.length; i++) {
+      atr = (atr * 13 + trList[i]) / 14;
+    }
+  }
+
+  // Calculate Bollinger Bands (20, 2)
+  const sma20 = [];
+  const upperBand = [];
+  const lowerBand = [];
+  for (let i = 19; i < closes.length; i++) {
+    const window = closes.slice(i - 19, i + 1);
+    const mean = window.reduce((a, b) => a + b, 0) / 20;
+    const variance = window.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / 20;
+    const stdDev = Math.sqrt(variance);
+    sma20.push(mean);
+    upperBand.push(mean + (2 * stdDev));
+    lowerBand.push(mean - (2 * stdDev));
+  }
+  const currentUpperBand = upperBand.length > 0 ? parseFloat(upperBand[upperBand.length - 1].toFixed(4)) : 0;
+  const currentLowerBand = lowerBand.length > 0 ? parseFloat(lowerBand[lowerBand.length - 1].toFixed(4)) : 0;
+  const currentSma20 = sma20.length > 0 ? parseFloat(sma20[sma20.length - 1].toFixed(4)) : 0;
+
   return {
     rsi: currentRsi,
     rsiStatus: currentRsi >= 70 ? 'OVERBOUGHT' : (currentRsi <= 30 ? 'OVERSOLD' : 'NEUTRAL'),
@@ -1248,7 +1293,18 @@ function calculateTechnicalIndicators(candles) {
     vwap: parseFloat(vwap.toFixed(4)),
     volumeSpike: isVolumeSpike,
     currentVol,
-    avgVol
+    avgVol,
+    ema: {
+      ema20: currentEma20,
+      ema50: currentEma50,
+      ema200: currentEma200
+    },
+    atr: parseFloat(atr.toFixed(4)),
+    bollingerBands: {
+      upper: currentUpperBand,
+      middle: currentSma20,
+      lower: currentLowerBand
+    }
   };
 }
 
