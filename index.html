@@ -20,6 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="./src/styles/main.css" />
+  <link rel="stylesheet" href="./src/styles/demoTrading.css" />
 </head>
 
 <body>
@@ -55,6 +56,10 @@
 
         <button id="run-backtest-btn" class="header-btn">
           <i data-lucide="history"></i> Backtester
+        </button>
+
+        <button id="demo-trading-btn" class="header-btn" title="Live Market Paper Trading">
+          <i data-lucide="wallet"></i> Demo Trading
         </button>
 
         <div class="alert-toggle-container" title="Background AI Market Polling">
@@ -294,9 +299,23 @@
       <!-- Interactive Chart View -->
       <div id="chart-container" class="chart-container"></div>
 
-      <!-- Analytics Breakdown Panel -->
-      <div id="analytics-container" class="analytics-container">
-        <div id="analytics-stats"></div>
+      <!-- Resizer Handle -->
+      <div id="sidebar-resizer" class="sidebar-resizer"></div>
+
+      <!-- Right Sidebar (Tabs) -->
+      <div id="sidebar-wrapper" class="sidebar-wrapper" style="width: 350px; flex-shrink: 0;">
+        <div class="sidebar-tabs-header">
+          <button id="sidebar-tab-analytics" class="sidebar-tab active">Analytics</button>
+          <button id="sidebar-tab-trade" class="sidebar-tab">Trade</button>
+        </div>
+        
+        <!-- Analytics Panel Container -->
+        <div id="analytics-container" class="analytics-container sidebar-content-pane active-pane">
+          <div id="analytics-stats"></div>
+        </div>
+        
+        <!-- Manual Trade Container -->
+        <div id="manual-trade-container" class="manual-trade-container sidebar-content-pane"></div>
       </div>
     </main>
   </div>
@@ -446,6 +465,9 @@
   <div id="ai-modal-overlay" class="ai-modal-overlay"></div>
 
   <script src="./src/neuro-bg.js"></script>
+
+  <div id="demo-trading-container"></div>
+
   <script type="module" src="./src/main.js"></script>
 </body>
 

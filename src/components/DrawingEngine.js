@@ -340,6 +340,35 @@ export class DrawingEngine {
   }
 
   // =========================================================
+  // AUTOMATIC PROGRAMMATIC DRAWINGS (e.g. SMC FVG Zones)
+  // =========================================================
+
+  clearAutoDrawings() {
+    this.drawings = this.drawings.filter(d => !d.isAuto);
+    this._scheduleRender();
+  }
+
+  addAutoRectangle(startTime, startPrice, endTime, endPrice, color, fill) {
+    const drawing = {
+      id: `auto_fvg_${this._nextId++}`,
+      type: 'rectangle',
+      points: [
+        { time: startTime, price: startPrice },
+        { time: endTime, price: endPrice }
+      ],
+      style: {
+        color: color,
+        lineWidth: 1,
+        lineStyle: 'solid',
+        fill: fill,
+      },
+      isAuto: true
+    };
+    this.drawings.push(drawing);
+    this._scheduleRender();
+  }
+
+  // =========================================================
   // 5. SELECTION & DRAG
   // =========================================================
 

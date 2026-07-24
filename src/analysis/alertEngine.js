@@ -7,6 +7,11 @@ export class AlertEngine {
     this.intervalId = null;
     this.pollingIntervalMs = 5 * 60 * 1000; // Poll every 5 minutes
     this.lastAlertTime = new Map(); // Keep track of when we last alerted for a pair/timeframe to avoid spam
+    this.sniperMode = false;
+  }
+
+  setSniperMode(isActive) {
+    this.sniperMode = isActive;
   }
 
   async requestPermission() {
@@ -78,7 +83,7 @@ export class AlertEngine {
         try {
           const result = await getMarketCandles(pair.symbol, tf, 200);
           if (result && result.data && result.data.length > 0) {
-            const analysis = detectAllPatterns(result.data);
+            const analysis = detectAllPatterns(result.data, { sniperMode: this.sniperMode });
             this.evaluateSignal(pair.symbol, tf, analysis, result.data[result.data.length - 1].close);
           }
         } catch (error) {
@@ -91,8 +96,9 @@ export class AlertEngine {
   }
 
   evaluateSignal(symbol, timeframe, analysis, currentPrice) {
-    const isStrongBuy = analysis.prediction?.direction === 'UP' && analysis.prediction?.score >= 20;
-    const isStrongSell = analysis.prediction?.direction === 'DOWN' && analysis.prediction?.score <= -20;
+    const threshold = this.sniperMode ? 35 : 20;
+    const isStrongBuy = analysis.prediction?.direction === 'UP' && analysis.prediction?.score >= threshold;
+    const isStrongSell = analysis.prediction?.direction === 'DOWN' && analysis.prediction?.score <= -threshold;
 
     let signalType = null;
     let title = '';

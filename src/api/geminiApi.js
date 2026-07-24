@@ -58,7 +58,9 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
     currentPrice, 
     supportLines = [], 
     resistanceLines = [],
-    patterns = null
+    patterns = null,
+    volumeProfile = null,
+    sniperMode = false
   } = marketContext;
   
   // Dynamic Live USD/LKR Exchange Rate
@@ -114,8 +116,14 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
 
   // Divergences
   const detectedDivergences = patterns?.divergences?.length > 0
-    ? patterns.divergences.map(d => `${d.type} on ${d.indicator}: ${d.desc}`).join(' | ')
-    : 'None detected';
+    ? patterns.divergences.map(d => `${d.type} Divergence (RSI: ${d.rsi.toFixed(2)} | MACD: ${d.macd ? 'Yes' : 'No'})`).join(' | ')
+    : 'None';
+
+  // Volume Profile (Price Heatmap)
+  const pocStr = volumeProfile?.pocPrice ? `$${volumeProfile.pocPrice.toFixed(4)}` : 'N/A';
+  const hvnStr = volumeProfile?.hvnPrices?.length > 0 
+    ? volumeProfile.hvnPrices.slice(0, 3).map(p => `$${p.toFixed(4)}`).join(', ') 
+    : 'None';
 
   // Fibonacci Levels & Golden Pocket
   let fibSection = 'N/A';
@@ -157,9 +165,16 @@ export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 1000
     apiKey = 'AQ.Ab8RN6LjfNubZxgX2PN541fYLbZjNoqgiOzFmHd4hr4aeJNsWg';
   }
 
+const sniperInstruction = sniperMode ? `
+=== 🎯 CRITICAL: SNIPER MODE ENABLED ===
+You must ONLY issue a BUY or SELL signal if this is an absolute A+ setup where hitting all 3 Take Profits is highly achievable based on strong market momentum and a clear path with no immediate Support/Resistance friction. If the setup is mediocre, choppy, or faces nearby friction, you MUST return HOLD.
+=========================================
+` : '';
+
   const promptText = `
 You are an expert quantitative crypto trader and pattern recognition specialist analyzing live automated chart scan results.
 ${userContextSection}
+${sniperInstruction}
 === MARKET OVERVIEW ===
 Symbol: ${symbol}
 Current Price: $${currentPrice} USD
@@ -206,6 +221,10 @@ Key Resistance Ceilings: ${resistanceLines.slice(0, 5).map(r => `$${r.price.toFi
 
 ▸ RSI Divergences:
   ${detectedDivergences}
+
+▸ Volume Profile / Price Heatmap:
+  - Point of Control (Max Volume): ${pocStr}
+  - High Volume Nodes (HVNs): ${hvnStr}
 
 ▸ Fibonacci Retracement:
   ${fibSection}

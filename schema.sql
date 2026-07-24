@@ -206,3 +206,64 @@ BEGIN
   DELETE FROM auth.users WHERE id = target_user_id;
 END;
 $sub LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 11. Demo Trading Accounts
+CREATE TABLE IF NOT EXISTS public.demo_accounts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  balance NUMERIC NOT NULL DEFAULT 100000,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.demo_accounts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own demo account" ON public.demo_accounts;
+CREATE POLICY "Users can view own demo account" 
+  ON public.demo_accounts FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own demo account" ON public.demo_accounts;
+CREATE POLICY "Users can insert own demo account" 
+  ON public.demo_accounts FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own demo account" ON public.demo_accounts;
+CREATE POLICY "Users can update own demo account" 
+  ON public.demo_accounts FOR UPDATE USING (auth.uid() = user_id);
+
+-- 12. Demo Trades
+CREATE TABLE IF NOT EXISTS public.demo_trades (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  symbol TEXT NOT NULL,
+  signal TEXT NOT NULL,
+  leverage NUMERIC NOT NULL DEFAULT 1,
+  investment_amount NUMERIC NOT NULL, -- The margin used
+  entry_price NUMERIC NOT NULL,
+  tp1 NUMERIC,
+  tp2 NUMERIC,
+  tp3 NUMERIC,
+  tp_status JSONB DEFAULT '{"tp1_hit": false, "tp2_hit": false, "tp3_hit": false}',
+  stop_loss NUMERIC,
+  status TEXT DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'CLOSED')),
+  open_time TIMESTAMPTZ DEFAULT NOW(),
+  close_time TIMESTAMPTZ,
+  close_price NUMERIC,
+  pnl_usd NUMERIC
+);
+
+CREATE INDEX IF NOT EXISTS idx_demo_trades_user_status 
+  ON public.demo_trades(user_id, status);
+
+ALTER TABLE public.demo_trades ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own demo trades" ON public.demo_trades;
+CREATE POLICY "Users can view own demo trades" 
+  ON public.demo_trades FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own demo trades" ON public.demo_trades;
+CREATE POLICY "Users can insert own demo trades" 
+  ON public.demo_trades FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own demo trades" ON public.demo_trades;
+CREATE POLICY "Users can update own demo trades" 
+  ON public.demo_trades FOR UPDATE USING (auth.uid() = user_id);

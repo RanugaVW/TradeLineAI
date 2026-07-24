@@ -62,7 +62,11 @@ export class PredictionHistory {
               }
             } catch (evalErr) {
               console.error('Failed to evaluate prediction:', evalErr);
-              alert('Evaluation error: ' + evalErr.message);
+              // Do not spam alerts. If it's a 429 rate limit, stop evaluating for now.
+              if (evalErr.message.includes('429')) {
+                console.warn('Gemini rate limit hit. Pausing background evaluations.');
+                break; // Stop the loop
+              }
             }
           }
         }

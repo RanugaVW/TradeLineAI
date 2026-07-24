@@ -33,7 +33,8 @@ export function detectAllPatterns(candles, options = {}) {
     marketStructure,
     indicators,
     chartPatterns,
-    divergences
+    divergences,
+    sniperMode: options.sniperMode || false
   });
 
   return {
@@ -45,6 +46,69 @@ export function detectAllPatterns(candles, options = {}) {
     chartPatterns,
     prediction
   };
+}
+
+/**
+ * Calculates Volume Profile (Price Heatmap)
+ * @param {Array} candles - Array of candle objects
+ * @param {number} numBins - Number of horizontal price slices
+ * @returns {Object} { pocPrice, hvnPrices }
+ */
+export function calculateVolumeProfile(candles, numBins = 60) {
+  if (!candles || candles.length === 0) return { pocPrice: null, hvnPrices: [] };
+
+  let minPrice = Infinity;
+  let maxPrice = -Infinity;
+
+  candles.forEach(c => {
+    if (c.low < minPrice) minPrice = c.low;
+    if (c.high > maxPrice) maxPrice = c.high;
+  });
+
+  if (minPrice === Infinity || maxPrice === -Infinity || minPrice === maxPrice) {
+    return { pocPrice: candles[0]?.close || null, hvnPrices: [] };
+  }
+
+  const binSize = (maxPrice - minPrice) / numBins;
+  const bins = Array(numBins).fill(0);
+
+  candles.forEach(c => {
+    const typicalPrice = (c.high + c.low + c.close) / 3;
+    const vol = c.volume || 0;
+    
+    // Find the bin index for the typical price
+    let binIdx = Math.floor((typicalPrice - minPrice) / binSize);
+    if (binIdx >= numBins) binIdx = numBins - 1;
+    if (binIdx < 0) binIdx = 0;
+    
+    bins[binIdx] += vol;
+  });
+
+  let maxVol = 0;
+  let pocIdx = -1;
+
+  bins.forEach((vol, idx) => {
+    if (vol > maxVol) {
+      maxVol = vol;
+      pocIdx = idx;
+    }
+  });
+
+  const pocPrice = pocIdx >= 0 ? minPrice + (pocIdx * binSize) + (binSize / 2) : null;
+  const hvnPrices = [];
+  const threshold = maxVol * 0.5; // High volume nodes must be at least 50% of POC
+
+  // Find local maxima
+  for (let i = 1; i < numBins - 1; i++) {
+    if (bins[i] >= threshold && bins[i] > bins[i - 1] && bins[i] > bins[i + 1]) {
+      // It's a local peak and significant volume
+      if (i !== pocIdx) { // Exclude POC itself
+        hvnPrices.push(minPrice + (i * binSize) + (binSize / 2));
+      }
+    }
+  }
+
+  return { pocPrice, hvnPrices };
 }
 
 /**
@@ -150,8 +214,9 @@ function predictNextMove(analysisData) {
   probability = Math.round(probability);
 
   let direction = 'NEUTRAL';
-  if (score > 10) direction = 'UP';
-  else if (score < -10) direction = 'DOWN';
+  const threshold = analysisData.sniperMode ? 30 : 10;
+  if (score > threshold) direction = 'UP';
+  else if (score < -threshold) direction = 'DOWN';
 
   return {
     direction,

@@ -51,10 +51,12 @@ export class ControlsBar {
       endDate: '',
       showSupport: false,
       showResistance: false,
+      showHeatmap: false,
       showBB: false,
       showRSI: false,
       showMACD: false,
-      showLabels: true, // Default to showing labels
+      showLabels: false, // Default to NOT showing labels
+      sniperMode: false,
       timezone: 'local',
       zoomPct: 100,
       ...options.initialState,
@@ -181,6 +183,12 @@ export class ControlsBar {
               </select>
               <button type="button" id="toggle-labels-btn" class="pill-btn ${this.state.showLabels ? 'active' : ''}" title="Toggle visibility of chart markers and labels" style="padding: 4px 8px; font-size: 11px;">
                 <i data-lucide="${this.state.showLabels ? 'eye' : 'eye-off'}"></i> ${this.state.showLabels ? 'Labels On' : 'Labels Off'}
+              </button>
+              <button type="button" id="sniper-mode-btn" class="pill-btn ${this.state.sniperMode ? 'active' : ''}" title="Sniper Mode: Only issue A+ Setup signals capable of hitting all 3 TPs. Weak signals will be ignored." style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">
+                <i data-lucide="crosshair"></i> Sniper Mode
+              </button>
+              <button type="button" id="toggle-heatmap-btn" class="pill-btn ${this.state.showHeatmap ? 'active' : ''}" title="Toggle Price Heatmap (Volume Profile) to see Point of Control and High Volume Nodes" style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">
+                <i data-lucide="bar-chart-2"></i> Heatmap
               </button>
             </div>
           </div>
@@ -309,7 +317,6 @@ export class ControlsBar {
       e.preventDefault();
       this.state.showSupport = true;
       this.state.showResistance = true;
-      this.state.showLabels = true; // Turn on labels for SR mode
       this.render();
       this.onChange(this.state);
     });
@@ -387,6 +394,22 @@ export class ControlsBar {
     toggleLabelsBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       this.state.showLabels = !this.state.showLabels;
+      this.render();
+      this.onChange(this.state);
+    });
+
+    const sniperModeBtn = this.container.querySelector('#sniper-mode-btn');
+    sniperModeBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.state.sniperMode = !this.state.sniperMode;
+      this.render();
+      this.onChange(this.state);
+    });
+
+    const toggleHeatmapBtn = this.container.querySelector('#toggle-heatmap-btn');
+    toggleHeatmapBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.state.showHeatmap = !this.state.showHeatmap;
       this.render();
       this.onChange(this.state);
     });

@@ -10,7 +10,9 @@
  */
 import { fetchGeminiTradeSuggestion, getLiveUsdToLkr } from '../api/geminiApi.js';
 import { AITradeModal } from './AITradeModal.js';
-import { getCurrentSession, saveAIPrediction } from '../api/supabaseClient.js';
+import { saveAIPrediction } from '../api/supabaseClient.js';
+import { placeDemoTrade } from '../api/demoTradeApi.js';
+import { getCurrentSession } from '../api/supabaseClient.js';
 
 export class AITradePanel {
   constructor(containerElement, options = {}) {
@@ -312,6 +314,13 @@ export class AITradePanel {
                       <button type="button" id="open-ai-modal-btn" class="open-ai-modal-btn" title="Open AI Focused Deep Analysis Modal">
                         <i data-lucide="search"></i> Open AI Focused Chart & Deep Analysis Modal
                       </button>
+
+                      <div class="ai-demo-trade-row" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px;">
+                        <input type="number" id="demo-trade-amount" class="custom-num-input" style="width: 120px;" placeholder="Amount (USD)" value="${this.aiData.usdBudget > 0 ? (this.aiData.usdBudget).toFixed(2) : '1000'}" />
+                        <button type="button" id="execute-demo-trade-btn" class="ai-overlay-btn" style="background: #f59e0b; color: #fff; flex: 1;" ${this.aiData.signal.toUpperCase() === 'HOLD' ? 'disabled' : ''}>
+                          <i data-lucide="wallet"></i> Execute Demo Trade
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ` : `
@@ -327,6 +336,12 @@ export class AITradePanel {
     `;
 
     this.attachEvents();
+  }
+
+  openFocusedModal() {
+    if (this.aiData && this.modal) {
+      this.modal.open(this.aiData, this.marketContext);
+    }
   }
 
   attachEvents() {
@@ -489,8 +504,42 @@ export class AITradePanel {
     const openModalBtn = this.container.querySelector('#open-ai-modal-btn');
     openModalBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (this.aiData && this.modal) {
-        this.modal.open(this.aiData, this.marketContext);
+      this.openFocusedModal();
+    });
+
+    const execDemoBtn = this.container.querySelector('#execute-demo-trade-btn');
+    execDemoBtn?.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      
+      const amountInput = this.container.querySelector('#demo-trade-amount');
+      const amount = parseFloat(amountInput?.value || 0);
+      
+      if (!amount || amount <= 0) {
+        alert('Please enter a valid investment amount in USD.');
+        return;
+      }
+
+      const session = await getCurrentSession();
+      if (!session) {
+        alert('Please log in to use Demo Trading.');
+        return;
+      }
+
+      try {
+        const tradeData = {
+          symbol: this.marketContext.symbol,
+          signal: this.aiData.signal,
+          leverage: this.leverage,
+          investment_amount: amount,
+          entry_price: parseFloat(this.aiData.entryPrice),
+          take_profit: this.aiData.takeProfitLevels?.length > 0 ? parseFloat(this.aiData.takeProfitLevels[0].price) : null,
+          stop_loss: parseFloat(this.aiData.stopLossPrice) || null
+        };
+        
+        await placeDemoTrade(tradeData);
+        alert('Demo trade placed successfully! Open the Demo Trading panel to view it.');
+      } catch (err) {
+        alert('Failed to place demo trade: ' + err.message);
       }
     });
 
