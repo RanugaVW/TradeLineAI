@@ -390,6 +390,8 @@ class App {
 
     // 8. Load initial market data (Default: PI-USDT, 1H)
     await this.loadAndAnalyze();
+    
+    this.isFullyInitialized = true;
 
     // 9. Background price refresh every 15s
     setInterval(() => {
@@ -635,11 +637,13 @@ class App {
     
     if (this.chartViewer.showSMC !== state.showSMC) {
       if (state.showSMC && this.userProfile && this.userProfile.role === 'free') {
-        alert('Smart Money Concepts (SMC) is an exclusive Pro 1 feature. Please upgrade your account to unlock this indicator.');
+        if (this.isFullyInitialized) {
+          alert('Smart Money Concepts (SMC) is an exclusive Pro 1 feature. Please upgrade your account to unlock this indicator.');
+        }
         // Revert UI toggle silently
         this.controlsBar.state.showSMC = false;
         this.controlsBar.render();
-        return;
+        state.showSMC = false; // Override state so chartViewer disables it
       }
       this.chartViewer.showSMC = state.showSMC;
       if (!state.showSMC) {
