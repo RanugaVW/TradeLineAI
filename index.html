@@ -87,12 +87,21 @@
             document.getElementById('auth-lock-overlay').classList.add('hidden');
           }
         </script>
-        <div class="blazity-landing">
+        <div class="grok-landing">
+          
+          <!-- Cinematic Light Flare on the Right -->
+          <div class="grok-light-flare"></div>
 
-          <div class="blazity-container">
+          <!-- Massive Background Text with Typing Animation -->
+          <div class="grok-bg-text type-anim">
+            <span style="font-weight: 900;">Trade</span><span style="font-weight: 400;">Line</span> <span style="font-weight: 900;">AI</span>
+          </div>
+
+          <!-- Restored Blazity Layout Content over the new background -->
+          <div class="blazity-container" style="position: relative; z-index: 10; margin: auto;">
             <!-- Left Hero Content -->
             <div class="blazity-hero-text">
-              <div class="blazity-brand">
+              <div class="blazity-brand" style="color: white; opacity: 0.8;">
                 <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none">
                   <line x1="18" y1="20" x2="18" y2="10"></line>
                   <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -101,21 +110,21 @@
                 <span style="font-weight: 600;">TradeLine AI</span>
               </div>
 
-              <h1 class="blazity-headline">
+              <h1 class="blazity-headline" style="color: white;">
                 <span class="highlight-orange">Smart.</span> Crypto<br />
                 Trading Advisor
               </h1>
 
-              <p class="blazity-subtitle">
+              <p class="blazity-subtitle" style="color: rgba(255, 255, 255, 0.7);">
                 Advanced Support & Resistance auto-detection for professional traders. Let AI Agents analyze your charts
                 and optimize your LKR budget instantly.
               </p>
 
               <div class="blazity-cta-group">
-                <button type="button" id="lock-screen-signin-btn" class="blazity-btn-primary">
+                <button type="button" id="lock-screen-signin-btn" class="blazity-btn-primary" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; backdrop-filter: blur(5px);">
                   Access Terminal
                 </button>
-                <a href="docs.html" class="blazity-btn-secondary">
+                <a href="docs.html" class="blazity-btn-secondary" style="color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2);">
                   View Documentation
                 </a>
               </div>
@@ -123,12 +132,12 @@
 
             <!-- Right Hero Graphic / App Mockup -->
             <div class="blazity-hero-graphic">
-              <div class="app-mockup-window">
-                <div class="mockup-header">
+              <div class="app-mockup-window" style="background: rgba(13, 17, 26, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                <div class="mockup-header" style="border-bottom-color: rgba(255, 255, 255, 0.1);">
                   <span class="dot red"></span>
                   <span class="dot yellow"></span>
                   <span class="dot green"></span>
-                  <div class="mockup-url">app.tradeline.ai</div>
+                  <div class="mockup-url" style="color: rgba(255, 255, 255, 0.5);">app.tradeline.ai</div>
                 </div>
                 <div class="mockup-body">
                   <div class="mockup-chart-placeholder">

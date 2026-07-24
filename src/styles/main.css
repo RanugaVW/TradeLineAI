@@ -762,7 +762,7 @@ input:checked + .slider:before {
   grid-template-columns: 1fr 0px;
 }
 
-/* Floating reopen tab — pinned to right edge, slides in from right */
+/* Floating reopen tab â€” pinned to right edge, slides in from right */
 .reopen-analytics-floating-btn {
   position: fixed;
   right: 0;
@@ -1823,7 +1823,7 @@ input:checked + .slider:before {
   color: var(--accent-blue);
 }
 
-/* ✕ Close / Hide AI Panel Button */
+/* âœ• Close / Hide AI Panel Button */
 .close-ai-panel-btn {
   background: rgba(255, 80, 80, 0.12);
   border: 1px solid rgba(255, 80, 80, 0.3);
@@ -3590,7 +3590,7 @@ input:checked + .slider:before {
 }
 
 /* ============================================================
-   DRAWING TOOLBAR — TradingView-Parity
+   DRAWING TOOLBAR â€” TradingView-Parity
    ============================================================ */
 
 .dtb-wrapper {
@@ -3830,7 +3830,7 @@ input:checked + .slider:before {
 }
 
 /* ============================================================
-   SVG DRAWING OVERLAY — handles & cursor states
+   SVG DRAWING OVERLAY â€” handles & cursor states
    ============================================================ */
 
 #drawing-overlay-svg {
@@ -4379,6 +4379,224 @@ select.blazity-input {
   background-position: right 10px center;
   background-size: 16px;
   padding-right: 40px;
+}
+/* Grok Style Landing Page Redesign */
+.grok-landing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #0b0b0b;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+}
+
+.grok-bg-text {
+  /* =========================================
+     ADJUST POSITION HERE: top and left values
+     ========================================= */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  /* =========================================
+     ADJUST SIZE HERE: decrease or increase font-size
+     ========================================= */
+  font-size: 16vw; 
+
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  pointer-events: none;
+  z-index: 0;
+
+  /* TYPING ANIMATION (Smooth left-to-right reveal) */
+  animation: typing-reveal 2.5s cubic-bezier(0.1, 0.7, 0.1, 1) forwards;
+}
+
+@keyframes typing-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.grok-light-flare {
+  position: absolute;
+  top: 50%;
+  right: -10%;
+  width: 70vw;
+  height: 140vh;
+  transform: translateY(-50%);
+  background: radial-gradient(ellipse at right center, rgba(249, 115, 22, 0.7) 0%, rgba(249, 115, 22, 0.25) 40%, rgba(0,0,0,0) 70%);
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 1;
+  animation: flare-pulse 8s infinite ease-in-out;
+}
+
+@keyframes flare-pulse {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+.grok-header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding: 30px 50px;
+}
+
+.grok-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-right: 40px;
+}
+
+.grok-nav {
+  display: flex;
+  gap: 30px;
+  flex: 1;
+}
+
+.grok-nav a {
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.2s ease;
+}
+
+.grok-nav a:hover {
+  color: #fff;
+}
+
+.grok-btn-outline {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.grok-btn-outline:hover {
+  color: #fff;
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.grok-center-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+}
+
+.grok-search-pill {
+  width: 600px;
+  max-width: 90%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  padding: 10px 10px 10px 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.grok-search-pill:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.grok-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+  pointer-events: none; /* Let the pill handle the click */
+}
+
+.grok-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.grok-search-submit {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: none; /* Let the pill handle the click */
+}
+
+.grok-footer {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 30px 50px;
+}
+
+.grok-footer-left {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.grok-footer-center {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.grok-footer-right {
+  display: flex;
+  gap: 12px;
+}
+
+.grok-footer-right a {
+  text-decoration: none;
 }
 select.blazity-input option {
   background: #0d111a;

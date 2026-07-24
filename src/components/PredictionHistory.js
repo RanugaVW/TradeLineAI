@@ -117,31 +117,59 @@ export class PredictionHistory {
 
     const renderCard = (pred) => {
       const isPending = pred.status === 'pending';
+      const evalStatus = (pred.evaluation_result && pred.evaluation_result.status) ? pred.evaluation_result.status : '';
+
       let statusColor = '#fbbf24'; // yellow
       if (!isPending) {
-        statusColor = pred.status.includes('tp') ? '#10b981' : '#ef4444'; // green or red
+        statusColor = evalStatus.includes('tp') ? '#10b981' : '#ef4444'; // green or red
       }
       const evalText = (pred.evaluation_result && pred.evaluation_result.feedback) 
         ? pred.evaluation_result.feedback 
         : (isPending ? 'Waiting for timeframe to complete...' : 'Evaluation failed.');
 
+      let tpHitsHtml = '';
+      if (!isPending) {
+        let tp1Hit = '❌', tp2Hit = '❌', tp3Hit = '❌';
+        let tpCount = 0;
+        
+        if (evalStatus === 'hit_tp3') {
+          tp1Hit = '✅'; tp2Hit = '✅'; tp3Hit = '✅'; tpCount = 3;
+        } else if (evalStatus === 'hit_tp2') {
+          tp1Hit = '✅'; tp2Hit = '✅'; tpCount = 2;
+        } else if (evalStatus === 'hit_tp1') {
+          tp1Hit = '✅'; tpCount = 1;
+        }
+        
+        tpHitsHtml = `
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1); font-size: 12px; font-weight: 500;">
+            <div style="margin-bottom: 8px; color: #ccc;">Take Profits Reached (${tpCount}/3):</div>
+            <div style="display: flex; gap: 8px;">
+              <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px;">${tp1Hit} TP1</span>
+              <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px;">${tp2Hit} TP2</span>
+              <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px;">${tp3Hit} TP3</span>
+            </div>
+          </div>
+        `;
+      }
+
       return `
         <div class="history-card" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border-left: 4px solid ${statusColor};">
           <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
             <strong>${pred.symbol} - ${pred.signal}</strong>
-            <span style="color: ${statusColor};">${isPending ? '⏳ Pending' : pred.status.toUpperCase()}</span>
+            <span style="color: ${statusColor}; font-weight: 600;">${isPending ? '⏳ Pending' : pred.status.toUpperCase().replace('_', ' ')}</span>
           </div>
           <div style="font-size: 13px; color: #aaa; margin-bottom: 10px;">
             <div>Created: ${this.formatColomboTime(pred.created_at)}</div>
             <div>Target: ${this.formatColomboTime(pred.target_resolution_time)} (Duration: ${pred.expected_duration_text})</div>
           </div>
-          <div style="display: flex; gap: 15px; font-size: 13px; margin-bottom: 10px;">
-            <div>Entry: $${pred.entry_price}</div>
-            <div>SL: $${pred.stop_loss_price}</div>
+          <div style="display: flex; gap: 15px; font-size: 13px; margin-bottom: 10px; background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="color: #fff;"><strong>Entry:</strong> $${pred.entry_price}</div>
+            <div style="color: #ef4444;"><strong>SL:</strong> $${pred.stop_loss_price}</div>
           </div>
-          <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; font-size: 13px;">
+          <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 6px; font-size: 13px; color: #ddd; line-height: 1.5; border-left: 2px solid ${statusColor};">
             ${evalText}
           </div>
+          ${tpHitsHtml}
         </div>
       `;
     };
