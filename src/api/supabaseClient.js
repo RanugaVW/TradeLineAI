@@ -85,26 +85,9 @@ export async function signUpUser(email, password, metadata = {}) {
   });
   if (error) throw error;
 
-  // Ensure profile row created with metadata
-  if (data.user) {
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id: data.user.id,
-      email,
-      role: 'free',
-      country_code: metadata.country_code || '',
-      country_name: metadata.country_name || '',
-      phone_number: metadata.phone_number || '',
-      postal_code: metadata.postal_code || '',
-      region: metadata.region || '',
-      age: metadata.age || 18,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'id' });
-
-    if (profileError) {
-      // If profile fails (e.g. duplicate phone), we should ideally clean up auth or inform the user
-      throw new Error(`Profile Error: ${profileError.message || profileError.details || JSON.stringify(profileError)}`);
-    }
-  }
+  // Note: We DO NOT manually insert into the 'profiles' table here.
+  // We have a PostgreSQL Trigger (on_auth_user_created) in schema.sql that automatically 
+  // reads the raw_user_meta_data and creates the profile securely bypassing RLS!
   return data;
 }
 
@@ -215,7 +198,7 @@ export async function loadUserAnnotations(userId, symbol) {
 }
 
 /**
- * Admin Panel Methods (Role Management)
+ * Admin Panel Methods (Role Management & Deletion)
  */
 export async function fetchAllProfiles() {
   const { data, error } = await supabase
@@ -235,6 +218,12 @@ export async function updateUserRole(userId, newRole) {
 
   if (error) throw error;
   return data;
+}
+
+export async function deleteUserAccount(userId) {
+  const { error } = await supabase.rpc('delete_user_by_admin', { target_user_id: userId });
+  if (error) throw error;
+  return true;
 }
 
 /**

@@ -142,6 +142,14 @@ class App {
     const alertToggle = document.getElementById('ai-alert-toggle');
     if (alertToggle) {
       alertToggle.addEventListener('change', (e) => {
+        const role = this.userProfile?.role || 'free';
+        if (role === 'free') {
+          e.preventDefault();
+          e.target.checked = false;
+          alert('Background AI Market Polling and Alerts are only available for PRO 1 and ADMIN accounts. Please contact an admin to upgrade your tier.');
+          return;
+        }
+
         if (e.target.checked) {
           alertEngine.start();
         } else {

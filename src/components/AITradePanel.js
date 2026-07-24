@@ -19,6 +19,7 @@ export class AITradePanel {
     this.isClosed = true;
     this.errorMsg = null;
     this.lkrBudget = 50000;
+    this.leverage = 1;
     this.tradeDuration = 'Day Trade (1 - 24h)';
     this.marketContext = null;
     this.aiData = null;
@@ -29,8 +30,14 @@ export class AITradePanel {
     // Default fallback rate (approximate 2024 value)
     this.liveRate = 305.50;
 
-    const modalOverlay = document.getElementById('ai-modal-overlay');
-    this.modal = modalOverlay ? new AITradeModal(modalOverlay) : null;
+    let modalOverlay = document.getElementById('ai-modal-overlay');
+    if (!modalOverlay) {
+      modalOverlay = document.createElement('div');
+      modalOverlay.id = 'ai-modal-overlay';
+      modalOverlay.className = 'ai-modal-overlay';
+      document.body.appendChild(modalOverlay);
+    }
+    this.modal = new AITradeModal(modalOverlay);
 
     this.onApplyAIOverlay = options.onApplyAIOverlay || (() => { });
     this.onResetAIOverlay = options.onResetAIOverlay || (() => { });
@@ -180,6 +187,21 @@ export class AITradePanel {
               </div>
 
               <div class="input-field-group">
+                <label for="leverage-select" class="field-label">
+                  Leverage (Risk Multiplier):
+                </label>
+                <select id="leverage-select" class="custom-select-full">
+                  <option value="1" ${this.leverage === 1 ? 'selected' : ''}>1x (Spot / No Leverage)</option>
+                  <option value="5" ${this.leverage === 5 ? 'selected' : ''}>5x (Low Risk)</option>
+                  <option value="10" ${this.leverage === 10 ? 'selected' : ''}>10x (Moderate)</option>
+                  <option value="20" ${this.leverage === 20 ? 'selected' : ''}>20x (High Risk)</option>
+                  <option value="50" ${this.leverage === 50 ? 'selected' : ''}>50x (Degen)</option>
+                  <option value="100" ${this.leverage === 100 ? 'selected' : ''}>100x (Max Degen)</option>
+                </select>
+                <small class="field-hint">Multiplies potential LKR profits and losses by controlling a larger position size.</small>
+              </div>
+
+              <div class="input-field-group">
                 <label for="ai-manual-context" class="field-label">
                   Additional Market Context & News (Optional):
                 </label>
@@ -246,30 +268,30 @@ export class AITradePanel {
 
                       <div class="alloc-card alloc-primary">
                         <span class="alloc-label">Optimized Coins to Buy</span>
-                        <span class="alloc-val">${this.aiData.coinsToBuy} ${this.marketContext?.symbol?.split('-')[0] || ''}</span>
+                        <span class="alloc-val">${this.aiData.signal.toUpperCase() === 'HOLD' ? '0' : this.aiData.coinsToBuy} ${this.marketContext?.symbol?.split('-')[0] || ''}</span>
                         <small class="alloc-sub">Entry @ $${this.aiData.entryPrice}</small>
                       </div>
 
-                      <div class="alloc-card alloc-profit" style="grid-column: span 2;">
+                      <div class="alloc-card alloc-profit" style="grid-column: span 2; ${this.aiData.signal.toUpperCase() === 'HOLD' ? 'opacity: 0.5;' : ''}">
                         <span class="alloc-label" style="display: flex; justify-content: space-between;">
                           <span>Take Profit Targets (TP1, TP2, TP3)</span>
                           ${this.aiData.expectedDuration ? `<span style="text-transform: none; color: #64b5f6; font-size: 11px; letter-spacing: 0;">Expected Duration: ${this.aiData.expectedDuration} (Target: ${this.aiData.colomboTargetText || ''} Colombo Time)</span>` : ''}
                         </span>
                         <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 5px;">
-                          ${this.aiData.takeProfitLevels?.map((tp, idx) => `
+                          ${this.aiData.signal.toUpperCase() === 'HOLD' ? '<div style="color: var(--text-secondary); font-size: 13px; font-style: italic;">No active targets during HOLD condition.</div>' : (this.aiData.takeProfitLevels?.map((tp, idx) => `
                             <div style="display: flex; justify-content: space-between; font-size: 13px;">
                               <span><strong>TP${idx + 1}</strong> @ $${tp.price.toFixed(4)}</span>
                               <span style="color: #00e676;">+${tp.percentage.toFixed(2)}% (+LKR ${(Math.abs(tp.price - this.aiData.entryPrice) * this.aiData.coinsToBuy * this.aiData.usdToLkr).toLocaleString(undefined, {maximumFractionDigits: 0})})</span>
                             </div>
-                          `).join('') || ''}
+                          `).join('') || '')}
                         </div>
                       </div>
 
-                      <div class="alloc-card alloc-loss" style="grid-column: span 2;">
+                      <div class="alloc-card alloc-loss" style="grid-column: span 2; ${this.aiData.signal.toUpperCase() === 'HOLD' ? 'opacity: 0.5;' : ''}">
                         <span class="alloc-label">Max Risk (Stop Loss)</span>
                         <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 5px;">
-                          <span><strong>SL</strong> @ $${this.aiData.stopLossPrice}</span>
-                          <span style="color: #ff1744;">-LKR ${this.aiData.potentialLossLkr.toLocaleString()}</span>
+                          <span><strong>SL</strong> ${this.aiData.signal.toUpperCase() === 'HOLD' ? 'N/A' : `@ $${this.aiData.stopLossPrice}`}</span>
+                          <span style="color: #ff1744;">${this.aiData.signal.toUpperCase() === 'HOLD' ? 'N/A' : `-LKR ${this.aiData.potentialLossLkr.toLocaleString()}`}</span>
                         </div>
                         <small class="alloc-sub" style="margin-top: 5px; display: block;">Reason: ${this.aiData.stopLossReason}</small>
                       </div>
@@ -336,6 +358,11 @@ export class AITradePanel {
       this.tradeDuration = e.target.value;
     });
 
+    const leverageSelectInput = this.container.querySelector('#leverage-select');
+    leverageSelectInput?.addEventListener('change', (e) => {
+      this.leverage = parseInt(e.target.value, 10);
+    });
+
     const contextInput = this.container.querySelector('#ai-manual-context');
     contextInput?.addEventListener('input', (e) => {
       this.userContext = e.target.value;
@@ -369,12 +396,17 @@ export class AITradePanel {
         return;
       }
 
+      const leverageSelect = this.container.querySelector('#leverage-select');
+      if (leverageSelect) {
+        this.leverage = parseInt(leverageSelect.value, 10);
+      }
+
       this.isLoading = true;
       this.errorMsg = null;
       this.render();
 
       try {
-        const result = await fetchGeminiTradeSuggestion(this.marketContext, this.lkrBudget, this.tradeDuration, this.userContext, this.chartImageBase64);
+        const result = await fetchGeminiTradeSuggestion(this.marketContext, this.lkrBudget, this.tradeDuration, this.userContext, this.chartImageBase64, this.leverage);
         this.aiData = result;
         this.errorMsg = null;
         

@@ -116,11 +116,14 @@ export class AdminPanel {
                     </span>
                   </td>
                   <td>
-                    <select class="custom-select role-select" data-user-id="${p.id}">
+                    <select class="custom-select role-select" data-user-id="${p.id}" style="margin-right: 8px;">
                       <option value="free" ${p.role === 'free' ? 'selected' : ''}>Free Tier</option>
                       <option value="pro1" ${p.role === 'pro1' ? 'selected' : ''}>Pro1 Tier</option>
                       <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin Tier</option>
                     </select>
+                    <button class="delete-user-btn" data-user-id="${p.id}" title="Delete User Account" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                      Delete
+                    </button>
                   </td>
                 </tr>
               `).join('')}
@@ -140,19 +143,61 @@ export class AdminPanel {
       if (e.target === this.overlay) this.close();
     });
 
-    const roleSelects = this.overlay.querySelectorAll('.role-select');
-    roleSelects.forEach(select => {
+    const selects = this.overlay.querySelectorAll('.role-select');
+    selects.forEach(select => {
       select.addEventListener('change', async (e) => {
-        const userId = select.getAttribute('data-user-id');
+        const userId = e.target.getAttribute('data-user-id');
         const newRole = e.target.value;
+        const originalValue = this.profiles.find(p => p.id === userId)?.role || 'free';
+        
         try {
+          // Disable select while updating
+          e.target.disabled = true;
+          const { updateUserRole } = await import('../api/supabaseClient.js');
           await updateUserRole(userId, newRole);
-          const p = this.profiles.find(item => item.id === userId);
-          if (p) p.role = newRole;
-          this.render();
+          
+          // Update local state
+          const pIdx = this.profiles.findIndex(p => p.id === userId);
+          if (pIdx > -1) this.profiles[pIdx].role = newRole;
+          
+          // Refresh UI to show new badge
           this.onRoleUpdated(userId, newRole);
+          this.render();
+          
+          // Show quick toast notification
+          alert(`Success! User role updated to ${newRole.toUpperCase()}.`);
         } catch (err) {
-          alert(`Failed to update user role: ${err.message}`);
+          console.error('Role update failed:', err);
+          alert('Failed to update user role: ' + err.message);
+          e.target.value = originalValue; // revert on fail
+        } finally {
+          e.target.disabled = false;
+        }
+      });
+    });
+
+    const deleteBtns = this.overlay.querySelectorAll('.delete-user-btn');
+    deleteBtns.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const userId = e.target.getAttribute('data-user-id');
+        const userEmail = this.profiles.find(p => p.id === userId)?.email || 'this user';
+        
+        if (confirm(`Are you absolutely sure you want to completely delete ${userEmail}? This action cannot be undone.`)) {
+          try {
+            e.target.disabled = true;
+            e.target.textContent = 'Deleting...';
+            const { deleteUserAccount } = await import('../api/supabaseClient.js');
+            await deleteUserAccount(userId);
+            
+            this.profiles = this.profiles.filter(p => p.id !== userId);
+            this.render();
+            alert('User successfully deleted.');
+          } catch (err) {
+            console.error('Delete user failed:', err);
+            alert('Failed to delete user: ' + err.message);
+            e.target.disabled = false;
+            e.target.textContent = 'Delete';
+          }
         }
       });
     });
