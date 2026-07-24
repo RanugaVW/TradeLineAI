@@ -52,7 +52,7 @@ export async function getLiveUsdToLkr() {
   return cachedLkrRate; // Safe fallback
 }
 
-export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 100000, tradeDuration = 'Day Trade (1 - 24h)', userContext = '', imageBase64 = null) {
+export async function fetchGeminiTradeSuggestion(marketContext, lkrBudget = 100000, tradeDuration = 'Day Trade (1 - 24h)', userContext = '', imageBase64 = null, leverage = 1) {
   const { 
     symbol, 
     currentPrice, 
@@ -164,6 +164,7 @@ ${userContextSection}
 Symbol: ${symbol}
 Current Price: $${currentPrice} USD
 Trader Budget: LKR ${lkrBudget.toLocaleString()} ≈ $${usdBudget.toFixed(2)} USD (1 USD = ${usdToLkr.toFixed(2)} LKR)
+Leverage (Risk Multiplier): ${leverage}x
 Trading Horizon: ${tradeDuration}
 
 === AUTOMATED AI CONFLUENCE ENGINE ===
@@ -215,13 +216,13 @@ ${imageBase64 ? 'I have also attached a screenshot of the chart with indicators 
 Factor in: candlestick bias, BOS/CHoCH structure shifts, institutional order blocks, FVG fill targets, VWAP bias, RSI/MACD momentum, divergences, and Fibonacci confluence.
 
 **CRITICAL ACCURACY RULES (MUST FOLLOW):**
-1. **No Forced Trades:** If confluence is low or signals are conflicting, you MUST output a "HOLD" signal. Only suggest "BUY" or "SELL" if you have >70% confidence.
-2. **Volatility-Safe Stop Loss:** Market noise and wicks frequently stop out tight trades. You MUST place the Stop Loss safely behind the furthest Support/Resistance level, Order Block, or FVG, AND add a 2-5% volatility buffer so the trade has room to breathe. DO NOT place tight Stop Losses.
-3. **Risk-to-Reward (R:R):** Ensure the distance to TP2 provides at least a 1:2 Risk-to-Reward ratio compared to your safe Stop Loss.
+1. **Trade Like a Pro (Accept Risk):** Financial markets ALWAYS have conflicting indicators (e.g. bearish VWAP but bullish RSI). Do NOT default to "HOLD" just because indicators disagree. Weigh the dominant setup (e.g. strong support bounce) over minor conflicts. Actively find the highest probability BUY or SELL setup. Only output "HOLD" in extreme, completely untradable chop.
+2. **Volatility-Safe Stop Loss:** Market noise and wicks frequently stop out tight trades. You MUST place the Stop Loss safely behind the furthest Support/Resistance level, Order Block, or FVG, AND add a volatility buffer (using ATR) so the trade has room to breathe.
+3. **Risk-to-Reward (R:R):** Ensure the distance to TP2 provides at least a 1:1.5 or 1:2 Risk-to-Reward ratio compared to your safe Stop Loss.
 
 Output a strict JSON object (no markdown, no backticks) with these exact fields:
 1. "signal": "BUY" | "STRONG BUY" | "SELL" | "STRONG SELL" | "HOLD"
-2. "confidence": integer 50–100 (must be >= 70 for BUY/SELL)
+2. "confidence": integer 50–100 (must be >= 55 for BUY/SELL)
 3. "analysis": 3–4 sentence explanation referencing the specific detected patterns above and why they support this trade.
 4. "entryPrice": optimal entry price in USD (use S/R, OB, or FVG fill logic)
 5. "takeProfitLevels": array of exactly 3 objects: [{"price": TP1, "percentage": profit_pct1}, {"price": TP2, "percentage": profit_pct2}, {"price": TP3, "percentage": profit_pct3}]. Provide progressive targets.
@@ -444,13 +445,12 @@ Respond ONLY with valid raw JSON.
           { price: isBullSignal ? entryPrice + baseDiff : entryPrice - baseDiff, percentage: 8.0 }
       ];
   }
-
   if (!stopLossPrice || (isBullSignal && stopLossPrice >= entryPrice) || (!isBullSignal && stopLossPrice <= entryPrice)) {
     stopLossPrice = isBullSignal ? entryPrice * 0.95 : entryPrice * 1.05;
   }
 
   const tp3Price = takeProfitLevels[2].price;
-  const coinsToBuy = usdBudget / entryPrice;
+  const coinsToBuy = (usdBudget * leverage) / entryPrice;
   const potentialProfitUsd = Math.abs(tp3Price - entryPrice) * coinsToBuy;
   const potentialProfitLkr = potentialProfitUsd * usdToLkr;
   const potentialLossUsd = Math.abs(entryPrice - stopLossPrice) * coinsToBuy;

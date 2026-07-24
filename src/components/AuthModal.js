@@ -303,7 +303,7 @@ export class AuthModal {
           const metadata = {
             country_code,
             country_name,
-            phone_number,
+            phone_number: cleanPhoneNoSpace,
             postal_code,
             region,
             age: ageVal

@@ -29,6 +29,18 @@ const TIMEZONES = [
 export class ControlsBar {
   constructor(containerElement, options = {}) {
     this.container = containerElement;
+    
+    // Attempt to load saved state from localStorage
+    let savedState = {};
+    try {
+      const stored = localStorage.getItem('tradeline_controls_state');
+      if (stored) {
+        savedState = JSON.parse(stored);
+      }
+    } catch(e) {
+      console.warn('Could not load controls state from localStorage', e);
+    }
+
     this.state = {
       symbol: 'PI-USDT',
       timeframe: '1H',
@@ -45,16 +57,32 @@ export class ControlsBar {
       showLabels: true, // Default to showing labels
       timezone: 'local',
       zoomPct: 100,
-      ...options.initialState
+      ...options.initialState,
+      ...savedState
     };
-    this.onChange = options.onChange || (() => { });
+    
+    const originalOnChange = options.onChange || (() => { });
+    this.onChange = (state) => {
+      this.saveState();
+      originalOnChange(state);
+    };
+    
     this.onZoomChange = options.onZoomChange || (() => { });
     this.onToggleExtend = options.onToggleExtend || (() => { });
     this.render();
   }
 
+  saveState() {
+    try {
+      localStorage.setItem('tradeline_controls_state', JSON.stringify(this.state));
+    } catch (e) {
+      console.warn('Could not save controls state to localStorage', e);
+    }
+  }
+
   setState(newState, triggerChange = false) {
     this.state = { ...this.state, ...newState };
+    this.saveState();
     this.render();
     if (triggerChange) {
       this.onChange(this.state);
@@ -84,13 +112,12 @@ export class ControlsBar {
               Symbol <i class="info-icon" data-lucide="info" title="Select cryptocurrency pair"></i>
             </label>
             <div class="select-container">
-              <select id="symbol-select" class="custom-select" title="Select cryptocurrency pair">
+              <input type="text" list="coin-list" id="symbol-select" class="custom-select" value="${this.state.symbol}" style="text-transform: uppercase;" title="Type any coin pair e.g. BTC-USDT" autocomplete="off" placeholder="Type pair..." />
+              <datalist id="coin-list">
                 ${POPULAR_PAIRS.map(p => `
-                  <option value="${p.symbol}" ${p.symbol === this.state.symbol ? 'selected' : ''}>
-                    ${p.name}
-                  </option>
+                  <option value="${p.symbol}">${p.name}</option>
                 `).join('')}
-              </select>
+              </datalist>
             </div>
           </div>
 

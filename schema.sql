@@ -192,3 +192,17 @@ CREATE POLICY "Users can insert own predictions"
 DROP POLICY IF EXISTS "Users can update own predictions" ON public.ai_predictions;
 CREATE POLICY "Users can update own predictions" 
   ON public.ai_predictions FOR UPDATE USING (auth.uid() = user_id);
+
+-- 10. Admin User Deletion Function
+CREATE OR REPLACE FUNCTION public.delete_user_by_admin(target_user_id UUID)
+RETURNS void AS $sub
+BEGIN
+  -- Verify caller is an admin
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied. Only administrators can delete users.';
+  END IF;
+
+  -- Delete from auth.users (This automatically cascades to public.profiles)
+  DELETE FROM auth.users WHERE id = target_user_id;
+END;
+$sub LANGUAGE plpgsql SECURITY DEFINER;
