@@ -154,6 +154,10 @@ class App {
             alert('Please log in to use Demo Trading.');
             return;
           }
+          if (this.userProfile && this.userProfile.role === 'free') {
+            alert('The Live Demo Trading Facility is an exclusive Pro 1 feature. Please upgrade your account to practice risk-free.');
+            return;
+          }
           this.demoTradingPanel.open();
         });
       }
@@ -366,6 +370,7 @@ class App {
         tolerancePct: 1.0,
         showSupport: false, // Default: Clean TradingView chart without lines on launch
         showResistance: false, // Default: Clean TradingView chart without lines on launch
+        showSMC: false, // Default: Off until explicitly toggled by a Pro user
         zoomPct: 100
       },
       onChange: (newState) => this.handleControlsChange(newState),
@@ -633,6 +638,13 @@ class App {
     }
     
     if (this.chartViewer.showSMC !== state.showSMC) {
+      if (state.showSMC && this.userProfile && this.userProfile.role === 'free') {
+        alert('Smart Money Concepts (SMC) is an exclusive Pro 1 feature. Please upgrade your account to unlock this indicator.');
+        // Revert UI toggle silently
+        this.controlsBar.state.showSMC = false;
+        this.controlsBar.render();
+        return;
+      }
       this.chartViewer.showSMC = state.showSMC;
       if (!state.showSMC) {
         this.chartViewer.clearSMC();
