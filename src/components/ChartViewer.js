@@ -167,8 +167,9 @@ export class ChartViewer {
     this.annotationSeriesList = [];
     this.aiOverlayPriceLines = [];
     this.patternPriceLines = [];
+    this.heatmapSeriesList = [];
 
-    this.showLabels = true;
+    this.showLabels = false;
 
     this.baseSRMarkers = [];
     this.currentPatternMarkers = [];
@@ -201,7 +202,7 @@ export class ChartViewer {
         horzLines: { color: 'rgba(255, 255, 255, 0.05)' }
       },
       crosshair: {
-        mode: 1
+        mode: 0
       },
       rightPriceScale: {
         borderColor: '#1e293b',
@@ -406,14 +407,32 @@ export class ChartViewer {
 
     const uniqueData = [];
     const seenTimes = new Set();
+    let maxDecimals = 2; // Default minimum precision
+    
     for (const d of formattedData) {
       if (!seenTimes.has(d.time)) {
         seenTimes.add(d.time);
         uniqueData.push(d);
+        
+        // Check precision of close price
+        const decimalStr = d.close.toString().split('.')[1];
+        if (decimalStr && decimalStr.length > maxDecimals) {
+          maxDecimals = decimalStr.length;
+        }
       }
     }
+    
+    if (maxDecimals > 8) maxDecimals = 8; // Cap at 8 decimals for crypto
 
     if (this.candlestickSeries) {
+      this.candlestickSeries.applyOptions({
+        priceFormat: {
+          type: 'price',
+          precision: maxDecimals,
+          minMove: 1 / Math.pow(10, maxDecimals)
+        }
+      });
+      
       this.candlestickSeries.setData(uniqueData);
       this.renderVisualIndicators(); // Re-render indicators when new candles arrive
     }
@@ -598,14 +617,69 @@ export class ChartViewer {
     const allMarkers = [...(this.baseSRMarkers || []), ...(this.currentPatternMarkers || [])];
     const markerMap = new Map();
     allMarkers.forEach(m => {
-      if (!markerMap.has(m.time)) {
-        markerMap.set(m.time, m);
+      const time = m.time;
+      if (!markerMap.has(time)) {
+        markerMap.set(time, m);
+      } else {
+        const existing = markerMap.get(time);
+        existing.text += ` & ${m.text}`;
       }
     });
 
-    this.candlestickSeries.setMarkers(Array.from(markerMap.values()).sort((a, b) => a.time - b.time));
+    const sortedMarkers = Array.from(markerMap.values()).sort((a, b) => a.time - b.time);
+    this.candlestickSeries.setMarkers(sortedMarkers);
   }
 
+  renderHeatmapLines(volumeProfile, showHeatmap, rangeStartSec = null, rangeEndSec = null) {
+    // Clear old lines
+    this.heatmapSeriesList.forEach(series => {
+      if (this.chart) this.chart.removeSeries(series);
+    });
+    this.heatmapSeriesList = [];
+
+    if (!showHeatmap || !volumeProfile || !this.currentCandles || this.currentCandles.length === 0) {
+      return;
+    }
+
+    const { pocPrice, hvnPrices } = volumeProfile;
+    
+    // Determine the visible time range
+    let startT = rangeStartSec || this.currentCandles[0].time;
+    let endT = rangeEndSec || this.currentCandles[this.currentCandles.length - 1].time;
+    if (startT >= endT) {
+       endT = startT + 3600;
+    }
+
+    // Helper to draw horizontal series
+    const createHeatmapLine = (price, color, lineWidth, title, lineStyle) => {
+      if (!price) return;
+      const series = this.chart.addLineSeries({
+        color,
+        lineWidth,
+        lineStyle,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        title
+      });
+      series.setData([
+        { time: startT, value: price },
+        { time: endT, value: price }
+      ]);
+      this.heatmapSeriesList.push(series);
+    };
+
+    // Draw POC (thick, solid orange)
+    if (pocPrice) {
+      createHeatmapLine(pocPrice, '#f97316', 3, 'POC (Max Volume)', 0);
+    }
+
+    // Draw HVNs (thinner, dashed orange)
+    if (hvnPrices && hvnPrices.length > 0) {
+      hvnPrices.forEach((hvnPrice, i) => {
+        createHeatmapLine(hvnPrice, 'rgba(249, 115, 22, 0.6)', 2, `HVN`, 1);
+      });
+    }
+  }
   renderPatternOverlays(patterns) {
     if (!patterns || !this.candlestickSeries) return;
 
@@ -613,6 +687,10 @@ export class ChartViewer {
       try { this.candlestickSeries.removePriceLine(line); } catch (e) { }
     });
     this.patternPriceLines = [];
+
+    if (this.drawingEngine) {
+      this.drawingEngine.clearAutoDrawings();
+    }
 
     const extraMarkers = [];
 
@@ -629,25 +707,47 @@ export class ChartViewer {
 
     (patterns.marketStructure?.bosEvents || []).forEach(b => {
       const isBull = b.type.includes('BULL');
-      extraMarkers.push({
-        time: b.time,
-        position: isBull ? 'aboveBar' : 'belowBar',
+      const bLine = this.candlestickSeries.createPriceLine({
+        price: b.price,
         color: isBull ? '#3b82f6' : '#f59e0b',
-        shape: 'square',
-        text: `BOS: $${b.price.toFixed(4)}`
+        lineWidth: 1,
+        lineStyle: 2, // Dashed
+        axisLabelVisible: true,
+        title: 'BOS'
       });
+      this.patternPriceLines.push(bLine);
     });
 
     (patterns.marketStructure?.chochEvents || []).forEach(c => {
       const isBull = c.type.includes('BULL');
-      extraMarkers.push({
-        time: c.time,
-        position: isBull ? 'aboveBar' : 'belowBar',
-        color: isBull ? '#8b5cf6' : '#ec4899', // Purple/Pink for CHoCH
-        shape: 'square',
-        text: `CHoCH: $${c.price.toFixed(4)}`
+      const cLine = this.candlestickSeries.createPriceLine({
+        price: c.price,
+        color: isBull ? '#8b5cf6' : '#ec4899',
+        lineWidth: 1,
+        lineStyle: 1, // Solid
+        axisLabelVisible: true,
+        title: 'CHoCH'
       });
+      this.patternPriceLines.push(cLine);
     });
+
+    if (this.drawingEngine && this.currentCandles && this.currentCandles.length > 2) {
+      const lastCandle = this.currentCandles[this.currentCandles.length - 1];
+      const prevCandle = this.currentCandles[this.currentCandles.length - 2];
+      const candleWidth = lastCandle.time - prevCandle.time;
+      let endTime = lastCandle.time;
+      if (typeof endTime === 'number') {
+        endTime += candleWidth * 15; // Extend 15 candles into the future
+      }
+      
+      (patterns.marketStructure?.fvgGaps || []).forEach(fvg => {
+        const isBull = fvg.type.includes('BULL');
+        const color = isBull ? 'rgba(0, 230, 118, 0.8)' : 'rgba(255, 23, 68, 0.8)';
+        const fill = isBull ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 23, 68, 0.15)';
+        
+        this.drawingEngine.addAutoRectangle(fvg.time, fvg.high, endTime, fvg.low, color, fill);
+      });
+    }
 
     (patterns.marketStructure?.pivots || []).forEach(p => {
       if (p.label) {

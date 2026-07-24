@@ -349,3 +349,18 @@ export async function getMarketCandles(symbol = 'PI-USDT', timeframeLabel = '1H'
     inFlightRequests.delete(cacheKey);
   }
 }
+
+/**
+ * Convenience method to get just the latest live close price of a symbol
+ */
+export async function getLivePrice(symbol) {
+  try {
+    const res = await getMarketCandles(symbol, '5m', 1);
+    if (res && res.data && res.data.length > 0) {
+      return res.data[res.data.length - 1].close;
+    }
+  } catch (err) {
+    console.error('Failed to get live price for ' + symbol, err);
+  }
+  return null;
+}

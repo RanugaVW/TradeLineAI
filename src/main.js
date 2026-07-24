@@ -1,6 +1,6 @@
 import { getMarketCandles } from './api/cryptoApi.js';
 import { detectSupportResistance } from './analysis/srDetector.js';
-import { detectAllPatterns } from './analysis/patternEngine.js';
+import { detectAllPatterns, calculateVolumeProfile } from './analysis/patternEngine.js';
 import { ChartViewer } from './components/ChartViewer.js';
 import { ControlsBar } from './components/ControlsBar.js';
 import { AnalyticsPanel } from './components/AnalyticsPanel.js';
@@ -13,6 +13,9 @@ import { supabase, getCurrentSession, fetchUserProfile, saveUserAnnotations, loa
 import { alertEngine } from './analysis/alertEngine.js';
 import { BacktestModal } from './components/BacktestModal.js';
 import { PredictionHistory } from './components/PredictionHistory.js';
+import { DemoTradingPanel } from './components/DemoTradingPanel.js';
+import { ManualTradePanel } from './components/ManualTradePanel.js';
+import { processTradeTriggers } from './api/demoTradeApi.js';
 
 class App {
   constructor() {
@@ -24,6 +27,8 @@ class App {
     this.favoritesToolbar = null;
     this.adminPanel = null;
     this.aiTradePanel = null;
+    this.demoTradingPanel = null;
+    this.manualTradePanel = null;
 
     this.currentUser = null;
     this.userProfile = { role: 'free' };
@@ -136,6 +141,66 @@ class App {
           if (overlay) overlay.style.display = 'none';
         });
       }
+    }
+
+    // Initialize Demo Trading Panel
+    const demoContainer = document.getElementById('demo-trading-container');
+    if (demoContainer) {
+      this.demoTradingPanel = new DemoTradingPanel(demoContainer);
+      const demoBtn = document.getElementById('demo-trading-btn');
+      if (demoBtn) {
+        demoBtn.addEventListener('click', () => {
+          if (!this.currentUser) {
+            alert('Please log in to use Demo Trading.');
+            return;
+          }
+          this.demoTradingPanel.open();
+        });
+      }
+    }
+
+    // Initialize Manual Trading Panel
+    const manualTradeContainer = document.getElementById('manual-trade-container');
+    if (manualTradeContainer) {
+      this.manualTradePanel = new ManualTradePanel(manualTradeContainer, {
+        onTradeSuccess: () => {
+          if (this.demoTradingPanel && this.demoTradingPanel.isOpen) {
+            this.demoTradingPanel.fetchAccount();
+            this.demoTradingPanel.trades = this.demoTradingPanel.fetchTrades ? this.demoTradingPanel.fetchTrades() : []; // it re-fetches inside closeDemoTrade but we can just force update
+            this.demoTradingPanel.open(); // re-open to refresh
+          }
+        }
+      });
+    }
+
+    // Sidebar Tabs Logic
+    const tabAnalytics = document.getElementById('sidebar-tab-analytics');
+    const tabTrade = document.getElementById('sidebar-tab-trade');
+    const paneAnalytics = document.getElementById('analytics-container');
+    const paneTrade = document.getElementById('manual-trade-container');
+
+    if (tabAnalytics && tabTrade && paneAnalytics && paneTrade) {
+      tabAnalytics.addEventListener('click', () => {
+        tabAnalytics.classList.add('active');
+        tabTrade.classList.remove('active');
+        paneAnalytics.classList.add('active-pane');
+        paneTrade.classList.remove('active-pane');
+      });
+
+      tabTrade.addEventListener('click', () => {
+        if (!this.currentUser) {
+          alert('Please log in to place manual trades.');
+          return;
+        }
+        tabTrade.classList.add('active');
+        tabAnalytics.classList.remove('active');
+        paneTrade.classList.add('active-pane');
+        paneAnalytics.classList.remove('active-pane');
+        
+        if (this.manualTradePanel) {
+        this.manualTradePanel.updateContext({ symbol: this.controlsBar.currentSymbol });
+      }
+      });
     }
 
     // Alert Engine Toggle
@@ -567,6 +632,10 @@ class App {
       this.chartViewer.combineAndSetMarkers();
     }
 
+    if (alertEngine && typeof alertEngine.setSniperMode === 'function') {
+      alertEngine.setSniperMode(state.sniperMode);
+    }
+
     // Save drawings for old symbol, load for new one
     if (symbolChanged) {
       this.chartViewer.setDrawingSymbol(state.symbol);
@@ -652,7 +721,7 @@ class App {
   }
 
   async loadAndAnalyze(resetView = false) {
-    const { symbol, timeframe, minBounces, tolerancePct, filterMode, startDate, endDate, showSupport, showResistance } = this.controlsBar.state;
+    const { symbol, timeframe, minBounces, tolerancePct, filterMode, startDate, endDate, showSupport, showResistance, sniperMode, showHeatmap } = this.controlsBar.state;
 
     try {
       // Fetch OHLCV candles
@@ -661,7 +730,13 @@ class App {
 
       if (!candles || candles.length === 0) return;
 
-      const currentPrice = candles[candles.length - 1].close;
+      const currentCandle = candles[candles.length - 1];
+      const currentPrice = currentCandle.close;
+      
+      // Auto-Execute Background Trades
+      if (this.currentUser) {
+        processTradeTriggers(symbol, currentCandle);
+      }
 
       // Filter candles strictly within user-selected Date-Time Range if specified
       let periodCandles = candles;
@@ -689,8 +764,12 @@ class App {
       // Run Automated Technical Pattern Recognition Engine A-Z
       const patterns = detectAllPatterns(periodCandles, {
         supportLines: analysis.supportLines,
-        resistanceLines: analysis.resistanceLines
+        resistanceLines: analysis.resistanceLines,
+        sniperMode
       });
+
+      // Calculate Volume Profile / Price Heatmap
+      const volumeProfile = calculateVolumeProfile(periodCandles);
 
       // Update Chart View preserving user zoom/scroll position unless explicitly reset
       this.chartViewer.setData(candles, resetView);
@@ -705,6 +784,9 @@ class App {
 
       // Render Candlestick patterns, BOS, and Golden Pocket lines
       this.chartViewer.renderPatternOverlays(patterns);
+
+      // Render Price Heatmap (Volume Profile) lines
+      this.chartViewer.renderHeatmapLines(volumeProfile, showHeatmap, startSec > 0 ? startSec : null, endSec !== Infinity ? endSec : null);
 
       // Load user cloud drawings for this symbol
       await this.loadSavedAnnotations();
@@ -724,11 +806,20 @@ class App {
       this.aiTradePanel?.setMarketContext({
         symbol,
         currentPrice,
-        candles,
         supportLines: analysis.supportLines,
         resistanceLines: analysis.resistanceLines,
-        patterns
+        candles: periodCandles
       });
+
+      // Update Manual Trade Panel context
+      if (this.manualTradePanel) {
+        this.manualTradePanel.updateContext({ symbol });
+      }
+
+      // Check alerts
+      if (alertEngine && typeof alertEngine.setSniperMode === 'function') {
+        alertEngine.setSniperMode(sniperMode);
+      }
 
     } catch (error) {
       console.error('Error during market analysis:', error);
@@ -739,4 +830,36 @@ class App {
 // Start application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   new App();
+
+  // Sidebar Resizer Logic
+  const resizer = document.getElementById('sidebar-resizer');
+  const sidebar = document.getElementById('sidebar-wrapper');
+  let isResizing = false;
+
+  if (resizer && sidebar) {
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      resizer.classList.add('is-resizing');
+      document.body.style.cursor = 'col-resize';
+      // Prevent text selection while dragging
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      // Calculate new width: window width - mouse X
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth > 250 && newWidth < 800) {
+        sidebar.style.width = `${newWidth}px`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        resizer.classList.remove('is-resizing');
+        document.body.style.cursor = '';
+      }
+    });
+  }
 });
