@@ -154,10 +154,6 @@ class App {
             alert('Please log in to use Demo Trading.');
             return;
           }
-          if (this.userProfile && this.userProfile.role === 'free') {
-            alert('The Live Demo Trading Facility is an exclusive Pro 1 feature. Please upgrade your account to practice risk-free.');
-            return;
-          }
           this.demoTradingPanel.open();
         });
       }
