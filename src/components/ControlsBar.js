@@ -56,6 +56,7 @@ export class ControlsBar {
       showRSI: false,
       showMACD: false,
       showLabels: false, // Default to NOT showing labels
+      showSMC: true,
       sniperMode: false,
       timezone: 'local',
       zoomPct: 100,
@@ -189,6 +190,9 @@ export class ControlsBar {
               </button>
               <button type="button" id="toggle-heatmap-btn" class="pill-btn ${this.state.showHeatmap ? 'active' : ''}" title="Toggle Price Heatmap (Volume Profile) to see Point of Control and High Volume Nodes" style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">
                 <i data-lucide="bar-chart-2"></i> Heatmap
+              </button>
+              <button type="button" id="toggle-smc-btn" class="pill-btn ${this.state.showSMC ? 'active' : ''}" title="Toggle Smart Money Concepts (SMC) Indicator" style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">
+                <i data-lucide="activity"></i> SMC Indicator
               </button>
             </div>
           </div>
@@ -410,6 +414,14 @@ export class ControlsBar {
     toggleHeatmapBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       this.state.showHeatmap = !this.state.showHeatmap;
+      this.render();
+      this.onChange(this.state);
+    });
+
+    const toggleSmcBtn = this.container.querySelector('#toggle-smc-btn');
+    toggleSmcBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.state.showSMC = !this.state.showSMC;
       this.render();
       this.onChange(this.state);
     });

@@ -103,18 +103,26 @@ export class DrawingEngine {
   // 2. COORDINATE HELPERS
   // =========================================================
 
-  _priceToY(price) { return this.series.priceToCoordinate(price); }
-  _yToPrice(y)     { return this.series.coordinateToPrice(y); }
-  _timeToX(time) {
-    let x = this.chart.timeScale().timeToCoordinate(time);
-    if (x == null) x = this.chart.timeScale().logicalToCoordinate(time);
-    return x;
+  _priceToY(price) {
+    let y = null;
+    try { y = this.series.priceToCoordinate(price); } catch(e) {}
+    return y;
   }
-  
-  _xToTime(x) {
-    let t = this.chart.timeScale().coordinateToTime(x);
-    if (t == null) t = this.chart.timeScale().coordinateToLogical(x);
-    return t;
+  _yToPrice(y) {
+    try { return this.series.coordinateToPrice(y); } catch(e) { return null; }
+  }
+  _timeToX(time) {
+    if (time === 'extend-right') return (this.container ? this.container.clientWidth : 1000) + 1000;
+    if (time === 'extend-left') return -1000;
+    let x = null;
+    try { x = this.chart.timeScale().timeToCoordinate(time); } catch(e) {}
+    if (x == null && this.cv && this.cv.currentCandles) {
+      const idx = this.cv.currentCandles.findIndex(c => c.time === time);
+      if (idx !== -1) {
+        try { x = this.chart.timeScale().logicalToCoordinate(idx); } catch(e) {}
+      }
+    }
+    return x;
   }
 
   _getXY(e) {
@@ -362,6 +370,26 @@ export class DrawingEngine {
         lineStyle: 'solid',
         fill: fill,
       },
+      isAuto: true
+    };
+    this.drawings.push(drawing);
+    this._scheduleRender();
+  }
+
+  addAutoLineWithText(startTime, startPrice, endTime, endPrice, text, color) {
+    const drawing = {
+      id: `auto_line_${this._nextId++}`,
+      type: 'trendline',
+      points: [
+        { time: startTime, price: startPrice },
+        { time: endTime, price: endPrice }
+      ],
+      style: {
+        color: color,
+        lineWidth: 2,
+        lineStyle: 'dashed'
+      },
+      text: text,
       isAuto: true
     };
     this.drawings.push(drawing);
@@ -688,10 +716,19 @@ export class DrawingEngine {
 
     // Price label at right end
     const lx=Math.max(x1,x2), ly=(x2>=x1)?y2:y1;
-    const pr = this._yToPrice(ly);
-    if (pr!=null) {
-      g.appendChild(this._rect(lx+2,ly-9,60,18,stroke,'none',0,3));
-      g.appendChild(this._txt(lx+5,ly,`$${pr.toFixed(4)}`,'#fff',9));
+    
+    if (d.text) {
+      // Draw text label centered on the line
+      const cx = (x1 + x2) / 2;
+      const cy = (y1 + y2) / 2;
+      g.appendChild(this._rect(cx-20, cy-14, 40, 14, 'transparent', 'var(--bg-color)', 0, 3));
+      g.appendChild(this._txt(cx, cy-7, d.text, stroke, 10, 'middle'));
+    } else {
+      const pr = this._yToPrice(ly);
+      if (pr!=null && !d.isAuto) {
+        g.appendChild(this._rect(lx+2,ly-9,60,18,stroke,'none',0,3));
+        g.appendChild(this._txt(lx+5,ly,`$${pr.toFixed(4)}`,'#fff',9));
+      }
     }
   }
 

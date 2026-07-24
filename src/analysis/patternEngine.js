@@ -1148,13 +1148,13 @@ function detectMarketStructure(candles, lookbackWindow = 3) {
 
     if (c3.low > c1.high) {
       const gapSizePct = ((c3.low - c1.high) / c1.high) * 100;
-      if (gapSizePct >= 0.2) {
+      if (gapSizePct >= 0.05) {
         fvgGaps.push({ type: 'BULLISH_FVG', high: c3.low, low: c1.high, time: c3.time, gapSizePct: gapSizePct.toFixed(2), desc: `Bullish FVG Imbalance: $${c1.high.toFixed(4)} - $${c3.low.toFixed(4)} (${gapSizePct.toFixed(2)}%)` });
       }
     }
     else if (c3.high < c1.low) {
       const gapSizePct = ((c1.low - c3.high) / c3.high) * 100;
-      if (gapSizePct >= 0.2) {
+      if (gapSizePct >= 0.05) {
         fvgGaps.push({ type: 'BEARISH_FVG', high: c1.low, low: c3.high, time: c3.time, gapSizePct: gapSizePct.toFixed(2), desc: `Bearish FVG Imbalance: $${c3.high.toFixed(4)} - $${c1.low.toFixed(4)} (${gapSizePct.toFixed(2)}%)` });
       }
     }

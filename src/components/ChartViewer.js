@@ -705,48 +705,74 @@ export class ChartViewer {
       });
     });
 
-    (patterns.marketStructure?.bosEvents || []).forEach(b => {
-      const isBull = b.type.includes('BULL');
-      const bLine = this.candlestickSeries.createPriceLine({
-        price: b.price,
-        color: isBull ? '#3b82f6' : '#f59e0b',
-        lineWidth: 1,
-        lineStyle: 2, // Dashed
-        axisLabelVisible: true,
-        title: 'BOS'
-      });
-      this.patternPriceLines.push(bLine);
-    });
+    if (this.showSMC !== false && this.currentCandles && this.currentCandles.length > 2) {
+      if (!this.smcOverlay) {
+        this.smcOverlay = document.createElement('div');
+        Object.assign(this.smcOverlay.style, {
+          position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
+          pointerEvents: 'none', zIndex: '25', overflow: 'hidden'
+        });
+        this.container.appendChild(this.smcOverlay);
+        
+        const syncLoop = () => {
+          this.syncSMCOverlay();
+          requestAnimationFrame(syncLoop);
+        };
+        requestAnimationFrame(syncLoop);
+      }
+      
+      const getOffsetTime = (baseTime, offset) => {
+        const idx = this.currentCandles.findIndex(c => c.time === baseTime);
+        if (idx === -1) return baseTime;
+        const targetIdx = Math.max(0, Math.min(this.currentCandles.length - 1, idx + offset));
+        return this.currentCandles[targetIdx].time;
+      };
 
-    (patterns.marketStructure?.chochEvents || []).forEach(c => {
-      const isBull = c.type.includes('BULL');
-      const cLine = this.candlestickSeries.createPriceLine({
-        price: c.price,
-        color: isBull ? '#8b5cf6' : '#ec4899',
-        lineWidth: 1,
-        lineStyle: 1, // Solid
-        axisLabelVisible: true,
-        title: 'CHoCH'
-      });
-      this.patternPriceLines.push(cLine);
-    });
-
-    if (this.drawingEngine && this.currentCandles && this.currentCandles.length > 2) {
       const lastCandle = this.currentCandles[this.currentCandles.length - 1];
       const prevCandle = this.currentCandles[this.currentCandles.length - 2];
       const candleWidth = lastCandle.time - prevCandle.time;
       let endTime = lastCandle.time;
       if (typeof endTime === 'number') {
-        endTime += candleWidth * 15; // Extend 15 candles into the future
+        endTime += candleWidth * 15;
       }
+      
+      this.smcData = [];
       
       (patterns.marketStructure?.fvgGaps || []).forEach(fvg => {
         const isBull = fvg.type.includes('BULL');
-        const color = isBull ? 'rgba(0, 230, 118, 0.8)' : 'rgba(255, 23, 68, 0.8)';
-        const fill = isBull ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 23, 68, 0.15)';
-        
-        this.drawingEngine.addAutoRectangle(fvg.time, fvg.high, endTime, fvg.low, color, fill);
+        this.smcData.push({
+          type: 'box',
+          x1: fvg.time, x2: endTime, y1: fvg.high, y2: fvg.low,
+          color: isBull ? 'rgba(0, 230, 118, 0.8)' : 'rgba(255, 23, 68, 0.8)',
+          fill: isBull ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 23, 68, 0.15)',
+          text: 'FVG'
+        });
       });
+
+      (patterns.marketStructure?.bosEvents || []).forEach(b => {
+        const isBull = b.type.includes('BULL');
+        this.smcData.push({
+          type: 'line',
+          x1: getOffsetTime(b.time, -15), x2: b.time, y1: b.price, y2: b.price,
+          color: isBull ? '#3b82f6' : '#f59e0b',
+          text: 'BOS', dashed: true
+        });
+      });
+
+      (patterns.marketStructure?.chochEvents || []).forEach(c => {
+        const isBull = c.type.includes('BULL');
+        this.smcData.push({
+          type: 'line',
+          x1: getOffsetTime(c.time, -15), x2: c.time, y1: c.price, y2: c.price,
+          color: isBull ? '#8b5cf6' : '#ec4899',
+          text: 'CHoCH', dashed: false
+        });
+      });
+      
+      this._smcDataDirty = true;
+    } else {
+      this.smcData = [];
+      this._smcDataDirty = true;
     }
 
     (patterns.marketStructure?.pivots || []).forEach(p => {
@@ -1288,5 +1314,94 @@ export class ChartViewer {
       this.macdSeries.setData(macdData.macd.filter(d => d.value !== null));
       this.macdSignalSeries.setData(macdData.signal.filter(d => d.value !== null));
     }
+  }
+
+  syncSMCOverlay() {
+    if (!this.smcOverlay) return;
+
+    if (this.showSMC === false || !this.smcData || this.smcData.length === 0) {
+       this.smcOverlay.innerHTML = '';
+       this._smcRenderedData = null;
+       return;
+    }
+    
+    // Check if coordinates changed
+    let needsUpdate = false;
+    if (this.currentCandles && this.currentCandles.length > 0) {
+       const testCandle = this.currentCandles[0];
+       let tx = null;
+       try { tx = this.chart.timeScale().timeToCoordinate(testCandle.time); } catch(e){}
+       let ty = null;
+       try { ty = this.candlestickSeries.priceToCoordinate(testCandle.close); } catch(e){}
+       
+       if (tx !== this._lastSMCX || ty !== this._lastSMCY) {
+           needsUpdate = true;
+           this._lastSMCX = tx;
+           this._lastSMCY = ty;
+       }
+    }
+    
+    if (!needsUpdate && !this._smcDataDirty) return;
+    this._smcDataDirty = false;
+    
+    const timeToX = (time) => {
+      let x = null;
+      try { x = this.chart.timeScale().timeToCoordinate(time); } catch(e) {}
+      if (x == null && this.currentCandles) {
+        const idx = this.currentCandles.findIndex(c => c.time === time);
+        if (idx !== -1) {
+          try { x = this.chart.timeScale().logicalToCoordinate(idx); } catch(e) {}
+        }
+      }
+      return x;
+    };
+
+    const priceToY = (price) => {
+      try { return this.candlestickSeries.priceToCoordinate(price); } catch(e) { return null; }
+    };
+
+    this.smcOverlay.innerHTML = ''; // Rebuild DOM for simplicity, it's fast for <30 elements
+    
+    this.smcData.forEach(d => {
+      let x1 = timeToX(d.x1), x2 = timeToX(d.x2);
+      let y1 = priceToY(d.y1), y2 = priceToY(d.y2);
+      if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+
+      if (d.type === 'box') {
+        const rx = Math.min(x1, x2), ry = Math.min(y1, y2);
+        const rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
+        const el = document.createElement('div');
+        Object.assign(el.style, {
+          position: 'absolute', left: rx + 'px', top: ry + 'px', width: rw + 'px', height: rh + 'px',
+          backgroundColor: d.fill, borderTop: `1px solid ${d.color}`, borderBottom: `1px solid ${d.color}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: d.color,
+          fontSize: '11px', fontWeight: 'bold', boxSizing: 'border-box'
+        });
+        if (d.text) el.textContent = d.text;
+        this.smcOverlay.appendChild(el);
+      } else if (d.type === 'line') {
+        const length = Math.hypot(x2 - x1, y2 - y1);
+        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+        
+        const el = document.createElement('div');
+        Object.assign(el.style, {
+          position: 'absolute', left: x1 + 'px', top: y1 + 'px', width: length + 'px', height: '0px',
+          borderBottom: `2px ${d.dashed ? 'dashed' : 'solid'} ${d.color}`, transformOrigin: '0 0', transform: `rotate(${angle}deg)`
+        });
+        this.smcOverlay.appendChild(el);
+
+        if (d.text) {
+          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+          const label = document.createElement('div');
+          Object.assign(label.style, {
+            position: 'absolute', left: mx + 'px', top: (my - 16) + 'px', color: d.color,
+            fontSize: '11px', fontWeight: 'bold', transform: 'translate(-50%, 0)',
+            background: 'var(--bg-color)', padding: '0 2px', borderRadius: '3px'
+          });
+          label.textContent = d.text;
+          this.smcOverlay.appendChild(label);
+        }
+      }
+    });
   }
 }

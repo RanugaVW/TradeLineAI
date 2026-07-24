@@ -631,6 +631,18 @@ class App {
       this.chartViewer.showLabels = state.showLabels;
       this.chartViewer.combineAndSetMarkers();
     }
+    
+    if (this.chartViewer.showSMC !== state.showSMC) {
+      this.chartViewer.showSMC = state.showSMC;
+      if (!state.showSMC) {
+        this.chartViewer.clearSMC();
+      } else {
+        // Redraw immediately when turned on
+        if (this.lastPatterns) {
+          this.chartViewer.renderPatternOverlays(this.lastPatterns);
+        }
+      }
+    }
 
     if (alertEngine && typeof alertEngine.setSniperMode === 'function') {
       alertEngine.setSniperMode(state.sniperMode);
@@ -784,6 +796,7 @@ class App {
 
       // Render Candlestick patterns, BOS, and Golden Pocket lines
       this.chartViewer.renderPatternOverlays(patterns);
+      this.lastPatterns = patterns;
 
       // Render Price Heatmap (Volume Profile) lines
       this.chartViewer.renderHeatmapLines(volumeProfile, showHeatmap, startSec > 0 ? startSec : null, endSec !== Infinity ? endSec : null);
@@ -808,7 +821,8 @@ class App {
         currentPrice,
         supportLines: analysis.supportLines,
         resistanceLines: analysis.resistanceLines,
-        candles: periodCandles
+        candles: periodCandles,
+        patterns
       });
 
       // Update Manual Trade Panel context

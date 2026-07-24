@@ -297,7 +297,64 @@
       <div id="drawing-toolbar-container" class="drawing-toolbar-container"></div>
 
       <!-- Interactive Chart View -->
-      <div id="chart-container" class="chart-container"></div>
+      <div id="chart-container" class="chart-container" style="position: relative;">
+        <!-- Left Floating Dashboard: Market Overview -->
+        <div id="market-overview-dashboard" class="floating-dashboard dashboard-left" style="display: none;">
+          <div class="dash-header">Market Overview</div>
+          <div class="dash-row">
+            <span>Direction</span>
+            <span id="dash-direction" class="dash-val">--</span>
+          </div>
+          <div class="dash-row">
+            <span>Current Position</span>
+            <span id="dash-position" class="dash-val">--</span>
+          </div>
+          <div class="dash-row">
+            <span>Current Trend</span>
+            <span id="dash-trend" class="dash-val">--</span>
+          </div>
+          <div class="dash-row">
+            <span>Volume</span>
+            <span id="dash-volume" class="dash-val">--</span>
+          </div>
+          <div class="dash-subheader">Timeframe Trends</div>
+          <div class="dash-row"><span>1 min:</span><span id="tf-1m" class="tf-badge">--</span></div>
+          <div class="dash-row"><span>5 min:</span><span id="tf-5m" class="tf-badge">--</span></div>
+          <div class="dash-row"><span>15 min:</span><span id="tf-15m" class="tf-badge">--</span></div>
+          <div class="dash-row"><span>1 H:</span><span id="tf-1h" class="tf-badge">--</span></div>
+          <div class="dash-row"><span>4 H:</span><span id="tf-4h" class="tf-badge">--</span></div>
+          <div class="dash-row"><span>Daily:</span><span id="tf-1d" class="tf-badge">--</span></div>
+        </div>
+        
+        <!-- Right Floating Dashboard: Trade Status -->
+        <div id="trade-status-dashboard" class="floating-dashboard dashboard-right" style="display: none;">
+          <div class="dash-header" style="background: #f59e0b; color: #000;">Trade Status</div>
+          <div class="dash-row">
+            <span>Direction</span>
+            <span id="dash-trade-dir" class="dash-val">--</span>
+          </div>
+          <div class="dash-row">
+            <span>Entry</span>
+            <span id="dash-trade-entry" class="dash-val">--</span>
+          </div>
+          <div class="dash-row">
+            <span>Stop Loss</span>
+            <span id="dash-trade-sl" class="dash-val">--</span>
+          </div>
+          <div class="dash-row">
+            <span>Take Profit 1</span>
+            <span id="dash-trade-tp1" class="dash-val">--</span>
+          </div>
+          <div class="dash-row">
+            <span>Take Profit 2</span>
+            <span id="dash-trade-tp2" class="dash-val">--</span>
+          </div>
+          <div class="dash-row">
+            <span>Win Rate</span>
+            <span id="dash-trade-winrate" class="dash-val" style="color: #10b981;">65%</span>
+          </div>
+        </div>
+      </div>
 
       <!-- Resizer Handle -->
       <div id="sidebar-resizer" class="sidebar-resizer"></div>
