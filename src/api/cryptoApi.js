@@ -15,7 +15,8 @@ export const POPULAR_PAIRS = [
   { symbol: 'XRP-USDT', name: 'Ripple (XRP/USDT)', provider: 'binance', defaultPrice: 0.58 },
   { symbol: 'DOGE-USDT', name: 'Dogecoin (DOGE/USDT)', provider: 'binance', defaultPrice: 0.12 },
   { symbol: 'ZEC-USDT', name: 'Zcash (ZEC/USDT)', provider: 'binance', defaultPrice: 35 },
-  { symbol: 'PAXG-USDT', name: 'Gold (PAXG/USDT)', provider: 'binance', defaultPrice: 2400 }
+  { symbol: 'PAXG-USDT', name: 'Gold (PAXG/USDT)', provider: 'binance', defaultPrice: 2400 },
+  { symbol: 'M-USDT', name: 'Mantle (M/USDT)', provider: 'binance', defaultPrice: 1.00 }
 ];
 
 export const TIMEFRAMES = [

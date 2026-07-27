@@ -13,6 +13,7 @@
  */
 import { createChart, LineStyle } from 'lightweight-charts';
 import { DrawingEngine } from './DrawingEngine.js';
+import { runSwiftAlgo } from '../analysis/swiftAlgoEngine.js';
 
 // --- Indicator Math Utilities ---
 function calculateSMA(data, period, key = 'close') {
@@ -1401,6 +1402,116 @@ export class ChartViewer {
           label.textContent = d.text;
           this.smcOverlay.appendChild(label);
         }
+      }
+    });
+  }
+
+  // --- Swift Algo X Rendering ---
+  clearSwiftAlgo() {
+    if (this.swiftAlgoBandsSeriesList && this.swiftAlgoBandsSeriesList.length > 0) {
+      this.swiftAlgoBandsSeriesList.forEach(s => this.chart.removeSeries(s));
+      this.swiftAlgoBandsSeriesList = [];
+    }
+    if (this.swiftAlgoOverlay) {
+      this.swiftAlgoOverlay.innerHTML = '';
+    }
+  }
+
+  renderSwiftAlgo(candles = this.currentCandles) {
+    this.clearSwiftAlgo();
+    if (!this.showSwiftAlgo || !candles || candles.length < 50) return;
+    
+    const signals = runSwiftAlgo(candles);
+    
+    const supportSeries = this.chart.addLineSeries({
+      color: '#00e676', lineWidth: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false
+    });
+    const resSeries = this.chart.addLineSeries({
+      color: '#ff1744', lineWidth: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false
+    });
+    
+    this.swiftAlgoBandsSeriesList = [supportSeries, resSeries];
+    
+    const sData = [];
+    const rData = [];
+    
+    signals.forEach(sig => {
+      sData.push({ time: sig.time, value: sig.trailingSupport });
+      rData.push({ time: sig.time, value: sig.trailingResistance });
+    });
+    
+    supportSeries.setData(sData);
+    resSeries.setData(rData);
+    
+    if (!this.swiftAlgoOverlay) {
+      this.swiftAlgoOverlay = document.createElement('div');
+      Object.assign(this.swiftAlgoOverlay.style, {
+        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10
+      });
+      this.container.appendChild(this.swiftAlgoOverlay);
+      this.chart.timeScale().subscribeVisibleTimeRangeChange(() => this.syncSwiftAlgoOverlay());
+      this.chart.timeScale().subscribeLogicalRangeChange(() => this.syncSwiftAlgoOverlay());
+    }
+    
+    this.swiftAlgoSignals = signals.filter(s => s.type);
+    this.syncSwiftAlgoOverlay();
+  }
+
+  syncSwiftAlgoOverlay() {
+    if (!this.swiftAlgoOverlay || !this.showSwiftAlgo) return;
+    this.swiftAlgoOverlay.innerHTML = '';
+    
+    if (!this.swiftAlgoSignals || this.swiftAlgoSignals.length === 0) return;
+    
+    const timeScale = this.chart.timeScale();
+    const priceScale = this.candlestickSeries.priceScale();
+    
+    this.swiftAlgoSignals.forEach(sig => {
+      const x = timeScale.timeToCoordinate(sig.time);
+      if (x === null || x < 0 || x > this.container.clientWidth) return;
+      
+      const labelY = priceScale.priceToCoordinate(sig.type === 'BUY' ? sig.trailingSupport : sig.trailingResistance);
+      if (labelY === null) return;
+      
+      const label = document.createElement('div');
+      Object.assign(label.style, {
+        position: 'absolute', left: x + 'px', top: (sig.type === 'BUY' ? labelY + 10 : labelY - 25) + 'px',
+        color: 'white', backgroundColor: sig.type === 'BUY' ? '#00e676' : '#ff1744',
+        padding: '2px 5px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', transform: 'translateX(-50%)',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.5)'
+      });
+      label.textContent = sig.type;
+      this.swiftAlgoOverlay.appendChild(label);
+      
+      const tpY = priceScale.priceToCoordinate(sig.tp);
+      const slY = priceScale.priceToCoordinate(sig.sl);
+      
+      if (tpY !== null && slY !== null) {
+        const tpLine = document.createElement('div');
+        Object.assign(tpLine.style, {
+          position: 'absolute', left: x + 'px', top: tpY + 'px', width: '30px', height: '2px', backgroundColor: '#00e676'
+        });
+        this.swiftAlgoOverlay.appendChild(tpLine);
+        const tpLabel = document.createElement('div');
+        Object.assign(tpLabel.style, {
+          position: 'absolute', left: (x + 32) + 'px', top: (tpY - 5) + 'px', color: '#00e676', fontSize: '9px',
+          fontWeight: 'bold', background: 'rgba(9,13,22,0.8)', padding: '0 2px', borderRadius: '2px'
+        });
+        tpLabel.textContent = 'TP';
+        this.swiftAlgoOverlay.appendChild(tpLabel);
+        
+        const slLine = document.createElement('div');
+        Object.assign(slLine.style, {
+          position: 'absolute', left: x + 'px', top: slY + 'px', width: '30px', height: '2px', backgroundColor: '#ff1744'
+        });
+        this.swiftAlgoOverlay.appendChild(slLine);
+        const slLabel = document.createElement('div');
+        Object.assign(slLabel.style, {
+          position: 'absolute', left: (x + 32) + 'px', top: (slY - 5) + 'px', color: '#ff1744', fontSize: '9px',
+          fontWeight: 'bold', background: 'rgba(9,13,22,0.8)', padding: '0 2px', borderRadius: '2px'
+        });
+        slLabel.textContent = 'SL';
+        this.swiftAlgoOverlay.appendChild(slLabel);
       }
     });
   }

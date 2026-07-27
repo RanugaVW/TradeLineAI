@@ -265,13 +265,24 @@ export class AITradePanel {
                       <div class="alloc-card">
                         <span class="alloc-label">LKR Budget</span>
                         <span class="alloc-val">LKR ${this.aiData.lkrBudget.toLocaleString()}</span>
-                        <small class="alloc-sub">($${this.aiData.usdBudget} USD)</small>
+                        <small class="alloc-sub">($${this.aiData.marginUsdt || this.aiData.usdBudget} USD) <strong>(used as margin)</strong></small>
                       </div>
 
                       <div class="alloc-card alloc-primary">
                         <span class="alloc-label">Optimized Coins to Buy</span>
                         <span class="alloc-val">${this.aiData.signal.toUpperCase() === 'HOLD' ? '0' : this.aiData.coinsToBuy} ${this.marketContext?.symbol?.split('-')[0] || ''}</span>
                         <small class="alloc-sub">Entry @ $${this.aiData.entryPrice}</small>
+                      </div>
+                      
+                      <div class="alloc-card" style="grid-column: span 2; background: rgba(33, 150, 243, 0.05); border: 1px solid rgba(33, 150, 243, 0.2);">
+                        <span class="alloc-label" style="display: flex; justify-content: space-between;">
+                          <span>Notional Position Size (Margin × Leverage)</span>
+                        </span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                          <span class="alloc-val" style="color: #90caf9;">$${this.aiData.positionSizeUsdt || (this.aiData.usdBudget * (this.aiData.leverageUsed || 1)).toFixed(2)} USDT</span>
+                          <span style="font-size: 13px; color: #b0bec5;">${this.aiData.leverageUsed || 1}x on $${this.aiData.marginUsdt || this.aiData.usdBudget} margin</span>
+                        </div>
+                        <small class="alloc-sub" style="color: #ff9800; display: block; margin-top: 5px;">Est. fees & funding: -$${this.aiData.estimatedFeesUsd || '0.00'} USDT</small>
                       </div>
 
                       <div class="alloc-card alloc-profit" style="grid-column: span 2; ${this.aiData.signal.toUpperCase() === 'HOLD' ? 'opacity: 0.5;' : ''}">
@@ -280,12 +291,18 @@ export class AITradePanel {
                           ${this.aiData.expectedDuration ? `<span style="text-transform: none; color: #64b5f6; font-size: 11px; letter-spacing: 0;">Expected Duration: ${this.aiData.expectedDuration} (Target: ${this.aiData.colomboTargetText || ''} Colombo Time)</span>` : ''}
                         </span>
                         <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 5px;">
-                          ${this.aiData.signal.toUpperCase() === 'HOLD' ? '<div style="color: var(--text-secondary); font-size: 13px; font-style: italic;">No active targets during HOLD condition.</div>' : (this.aiData.takeProfitLevels?.map((tp, idx) => `
+                          ${this.aiData.signal.toUpperCase() === 'HOLD' ? '<div style="color: var(--text-secondary); font-size: 13px; font-style: italic;">No active targets during HOLD condition.</div>' : (this.aiData.takeProfitLevels?.map((tp, idx) => {
+                            const direction = (this.aiData.signal.includes('BUY') || !this.aiData.signal.includes('SELL')) ? 'long' : 'short';
+                            const priceMovePct = direction === 'short' ? (this.aiData.entryPrice - tp.price) / this.aiData.entryPrice : (tp.price - this.aiData.entryPrice) / this.aiData.entryPrice;
+                            const grossPnl = (this.aiData.positionSizeUsdt || (this.aiData.usdBudget * (this.aiData.leverageUsed || 1))) * priceMovePct;
+                            const netPnlLkr = (grossPnl - (this.aiData.estimatedFeesUsd || 0)) * this.aiData.usdToLkr;
+                            return `
                             <div style="display: flex; justify-content: space-between; font-size: 13px;">
                               <span><strong>TP${idx + 1}</strong> @ $${tp.price.toFixed(4)}</span>
-                              <span style="color: #00e676;">+${tp.percentage.toFixed(2)}% (+LKR ${(Math.abs(tp.price - this.aiData.entryPrice) * this.aiData.coinsToBuy * this.aiData.usdToLkr).toLocaleString(undefined, {maximumFractionDigits: 0})})</span>
+                              <span style="color: #00e676;">+${tp.percentage.toFixed(2)}% (+LKR ${Math.max(0, netPnlLkr).toLocaleString(undefined, {maximumFractionDigits: 0})})</span>
                             </div>
-                          `).join('') || '')}
+                            `;
+                          }).join('') || '')}
                         </div>
                       </div>
 
@@ -310,6 +327,12 @@ export class AITradePanel {
                           <i data-lucide="rotate-ccw"></i> Reset AI
                         </button>
                       </div>
+                      
+                      <div style="text-align: center; margin-top: 10px;">
+                        <span style="font-size: 11px; color: #ffb74d; background: rgba(255,183,77,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,183,77,0.2);">
+                          <i data-lucide="shield-alert" style="width:12px; height:12px; display:inline-block; vertical-align:text-bottom;"></i> Trade will execute in <strong>ISOLATED MARGIN</strong> mode to strictly cap maximum risk.
+                        </span>
+                      </div>
 
                       <button type="button" id="open-ai-modal-btn" class="open-ai-modal-btn" title="Open AI Focused Deep Analysis Modal">
                         <i data-lucide="search"></i> Open AI Focused Chart & Deep Analysis Modal
@@ -321,6 +344,69 @@ export class AITradePanel {
                           <i data-lucide="wallet"></i> Execute Demo Trade
                         </button>
                       </div>
+
+                      <!-- Manual Profit/Loss Calculator -->
+                      <div class="pnl-calculator-container" style="margin-top: 15px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(0,0,0,0.2);">
+                        <button type="button" id="toggle-pnl-calc-btn" style="width: 100%; padding: 12px; background: none; border: none; color: #90caf9; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13px;">
+                          <span style="display: flex; align-items: center; gap: 8px;"><i data-lucide="calculator"></i> Manual Profit/Loss Calculator</span>
+                          <i data-lucide="chevron-down" id="pnl-calc-chevron"></i>
+                        </button>
+                        <div id="pnl-calc-form" style="display: none; padding: 15px; border-top: 1px solid rgba(255,255,255,0.05); gap: 10px; flex-direction: column;">
+                          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                              <label style="font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: block;">Margin (USDT)</label>
+                              <input type="number" id="pnl-calc-margin" class="custom-num-input" style="width: 100%;" value="${this.aiData.marginUsdt || 100}" />
+                            </div>
+                            <div>
+                              <label style="font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: block;">Leverage</label>
+                              <input type="number" id="pnl-calc-leverage" class="custom-num-input" style="width: 100%;" value="${this.aiData.leverageUsed || 10}" />
+                            </div>
+                            <div>
+                              <label style="font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: block;">Entry Price</label>
+                              <input type="number" id="pnl-calc-entry" class="custom-num-input" style="width: 100%;" value="${this.aiData.entryPrice || 0}" />
+                            </div>
+                            <div>
+                              <label style="font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: block;">Direction</label>
+                              <select id="pnl-calc-direction" class="custom-select" style="width: 100%;">
+                                <option value="long" ${this.aiData.signal.includes('BUY') ? 'selected' : ''}>Long (Buy)</option>
+                                <option value="short" ${this.aiData.signal.includes('SELL') ? 'selected' : ''}>Short (Sell)</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label style="font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: block;">Take Profit (TP)</label>
+                              <input type="number" id="pnl-calc-tp" class="custom-num-input" style="width: 100%;" value="${this.aiData.takeProfitLevels?.[0]?.price || 0}" />
+                            </div>
+                            <div>
+                              <label style="font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: block;">Stop Loss (SL)</label>
+                              <input type="number" id="pnl-calc-sl" class="custom-num-input" style="width: 100%;" value="${this.aiData.stopLossPrice || 0}" />
+                            </div>
+                          </div>
+                          
+                          <div style="background: rgba(33, 150, 243, 0.05); padding: 10px; border-radius: 6px; border: 1px solid rgba(33, 150, 243, 0.2); margin-top: 5px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                              <span style="color: #9ca3af;">Position Size:</span>
+                              <strong id="pnl-calc-size" style="color: #e5e7eb;">$0.00</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                              <span style="color: #9ca3af;">Est. Fees & Funding:</span>
+                              <strong id="pnl-calc-fees" style="color: #ff9800;">-$0.00</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                              <span style="color: #9ca3af;">Net Profit @ TP:</span>
+                              <strong id="pnl-calc-net-tp" style="color: #00e676;">+$0.00</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                              <span style="color: #9ca3af;">Net Loss @ SL:</span>
+                              <strong id="pnl-calc-net-sl" style="color: #ff1744;">-$0.00</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 10px;">
+                              <span style="color: #9ca3af;">ROI @ TP:</span>
+                              <strong id="pnl-calc-roi" style="color: #64b5f6;">0.00%</strong>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 ` : `
@@ -530,7 +616,9 @@ export class AITradePanel {
           symbol: this.marketContext.symbol,
           signal: this.aiData.signal,
           leverage: this.leverage,
-          investment_amount: amount,
+          investment_amount: amount, // This is the Margin
+          quantity: this.aiData.coinsToBuy,
+          margin_type: 'ISOLATED',
           entry_price: parseFloat(this.aiData.entryPrice),
           take_profit: this.aiData.takeProfitLevels?.length > 0 ? parseFloat(this.aiData.takeProfitLevels[0].price) : null,
           stop_loss: parseFloat(this.aiData.stopLossPrice) || null
@@ -542,6 +630,76 @@ export class AITradePanel {
         alert('Failed to place demo trade: ' + err.message);
       }
     });
+
+    // Manual PnL Calculator Logic
+    const togglePnlBtn = this.container.querySelector('#toggle-pnl-calc-btn');
+    const pnlForm = this.container.querySelector('#pnl-calc-form');
+    const pnlChevron = this.container.querySelector('#pnl-calc-chevron');
+    
+    if (togglePnlBtn && pnlForm) {
+      togglePnlBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = pnlForm.style.display === 'none';
+        pnlForm.style.display = isHidden ? 'flex' : 'none';
+        if (pnlChevron) {
+          pnlChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+          pnlChevron.style.transition = 'transform 0.2s';
+        }
+        if (isHidden) calculatePnl();
+      });
+
+      const calcInputs = [
+        '#pnl-calc-margin', '#pnl-calc-leverage', '#pnl-calc-entry', 
+        '#pnl-calc-direction', '#pnl-calc-tp', '#pnl-calc-sl'
+      ];
+      
+      const calculatePnl = () => {
+        const margin = parseFloat(this.container.querySelector('#pnl-calc-margin').value) || 0;
+        const lev = parseFloat(this.container.querySelector('#pnl-calc-leverage').value) || 1;
+        const entry = parseFloat(this.container.querySelector('#pnl-calc-entry').value) || 0;
+        const dir = this.container.querySelector('#pnl-calc-direction').value;
+        const tp = parseFloat(this.container.querySelector('#pnl-calc-tp').value) || 0;
+        const sl = parseFloat(this.container.querySelector('#pnl-calc-sl').value) || 0;
+
+        if (!entry || !margin) return;
+
+        const posSize = margin * lev;
+        const feeRate = 0.0005; // 0.05% taker
+        const estFees = posSize * feeRate * 2; // entry + exit
+        
+        let tpNet = 0;
+        let slNet = 0;
+
+        if (dir === 'short') {
+          if (tp) tpNet = (posSize * ((entry - tp) / entry)) - estFees;
+          if (sl) slNet = (posSize * ((entry - sl) / entry)) - estFees;
+        } else {
+          if (tp) tpNet = (posSize * ((tp - entry) / entry)) - estFees;
+          if (sl) slNet = (posSize * ((sl - entry) / entry)) - estFees;
+        }
+
+        const roi = (tpNet / margin) * 100;
+
+        this.container.querySelector('#pnl-calc-size').textContent = `$${posSize.toFixed(2)}`;
+        this.container.querySelector('#pnl-calc-fees').textContent = `-$${estFees.toFixed(2)}`;
+        
+        const tpEl = this.container.querySelector('#pnl-calc-net-tp');
+        tpEl.textContent = tpNet >= 0 ? `+$${tpNet.toFixed(2)}` : `-$${Math.abs(tpNet).toFixed(2)}`;
+        tpEl.style.color = tpNet >= 0 ? '#00e676' : '#ff1744';
+
+        const slEl = this.container.querySelector('#pnl-calc-net-sl');
+        slEl.textContent = slNet >= 0 ? `+$${slNet.toFixed(2)}` : `-$${Math.abs(slNet).toFixed(2)}`;
+        slEl.style.color = slNet >= 0 ? '#00e676' : '#ff1744';
+
+        const roiEl = this.container.querySelector('#pnl-calc-roi');
+        roiEl.textContent = `${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%`;
+        roiEl.style.color = roi >= 0 ? '#64b5f6' : '#ff1744';
+      };
+
+      calcInputs.forEach(selector => {
+        this.container.querySelector(selector)?.addEventListener('input', calculatePnl);
+      });
+    }
 
     // Open History Modal Listener
     const openHistoryBtn = this.container.querySelector('#open-history-modal-btn');

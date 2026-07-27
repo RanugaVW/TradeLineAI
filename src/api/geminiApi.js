@@ -6,6 +6,8 @@
  * 3. Hybrid Engine: Gemini AI primary with Quantitative Technical Analysis fallback.
  */
 
+import { supabase } from './supabaseClient.js';
+
 let cachedLkrRate = 305.0;
 let lastLkrFetchTime = 0;
 const RATE_TTL_MS = 60000; // 60-second cache
@@ -253,7 +255,7 @@ Respond ONLY with valid raw JSON.
 `;
   let aiResult = null;
 
-  if (apiKey && !apiKey.includes('placeholder')) {
+  if (true) {
     const candidateModels = [
       'gemini-3.5-flash',
       'gemini-flash-latest',
@@ -264,25 +266,22 @@ Respond ONLY with valid raw JSON.
 
     for (const modelName of candidateModels) {
       try {
-        const parts = [{ text: promptText }];
-        if (imageBase64) {
-          const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-          const mimeTypeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
-          const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
-          parts.push({
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Data
-            }
-          });
+        const session = await supabase.auth.getSession();
+        const token = session?.data?.session?.access_token;
+        if (!token) {
+          throw new Error('Active session required for AI Advisor.');
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-        const res = await fetch(url, {
+        const res = await fetch('/api/gemini', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({
-            contents: [{ parts: parts }]
+            promptText,
+            modelName,
+            imageBase64
           })
         });
 
@@ -295,10 +294,10 @@ Respond ONLY with valid raw JSON.
             break;
           }
         } else {
-          console.warn(`Gemini API Error (${modelName}): ${res.status} ${res.statusText}`, await res.text().catch(() => ''));
+          console.warn(`Gemini Proxy Error (${modelName}): ${res.status} ${res.statusText}`, await res.text().catch(() => ''));
         }
       } catch (err) {
-        console.warn(`Gemini API Fetch Error (${modelName}):`, err);
+        console.warn(`Gemini Proxy Fetch Error (${modelName}):`, err);
       }
     }
   }
@@ -469,11 +468,38 @@ Respond ONLY with valid raw JSON.
   }
 
   const tp3Price = takeProfitLevels[2].price;
-  const coinsToBuy = (usdBudget * leverage) / entryPrice;
-  const potentialProfitUsd = Math.abs(tp3Price - entryPrice) * coinsToBuy;
+
+  function roundToStep(quantity, step_size) {
+    return Math.floor(quantity / step_size) * step_size;
+  }
+  const positionSizeUsdt = usdBudget * leverage;
+  const rawCoinsToBuy = positionSizeUsdt / entryPrice;
+  const coinsToBuy = roundToStep(rawCoinsToBuy, 0.001);
+
+  const direction = isBullSignal ? 'long' : 'short';
+  const feeRate = 0.0005; // 0.05% default taker fee
+  const fundingRate = 0.0001; // 0.01% standard funding
+  const fundingIntervalsExpected = 1;
+
+  function netProfit(targetPrice) {
+      const priceMovePct = direction === 'short' ? (entryPrice - targetPrice) / entryPrice : (targetPrice - entryPrice) / entryPrice;
+      const grossPnl = positionSizeUsdt * priceMovePct;
+      const entryFee = positionSizeUsdt * feeRate;
+      const exitFee = positionSizeUsdt * feeRate;
+      const fundingCost = positionSizeUsdt * fundingRate * fundingIntervalsExpected;
+      return grossPnl - entryFee - exitFee - fundingCost;
+  }
+
+  const potentialProfitUsd = netProfit(tp3Price);
   const potentialProfitLkr = potentialProfitUsd * usdToLkr;
-  const potentialLossUsd = Math.abs(entryPrice - stopLossPrice) * coinsToBuy;
+  
+  // SL net profit will be negative, representing the loss
+  const slNetUsd = netProfit(stopLossPrice); 
+  const potentialLossUsd = Math.abs(slNetUsd);
   const potentialLossLkr = potentialLossUsd * usdToLkr;
+  
+  const estimatedFeesUsd = (positionSizeUsdt * feeRate * 2) + (positionSizeUsdt * fundingRate * fundingIntervalsExpected);
+
   const riskRewardRatio = potentialLossUsd > 0 ? (potentialProfitUsd / potentialLossUsd).toFixed(2) : '2.5';
 
   return {
@@ -483,14 +509,30 @@ Respond ONLY with valid raw JSON.
     engineType: aiResult.engineType || 'Gemini AI',
     tradeDuration,
     entryPrice: Number(entryPrice.toFixed(4)),
-    takeProfitLevels: takeProfitLevels.map(tp => ({ price: Number(tp.price.toFixed(4)), percentage: Number(tp.percentage.toFixed(2)) })),
+    takeProfitLevels: takeProfitLevels.map(tp => {
+      const priceVal = typeof tp.price === 'number' ? tp.price : parseFloat(tp.price);
+      let pctVal = tp.percentage;
+      if (pctVal === undefined || pctVal === null) {
+        pctVal = Math.abs(priceVal - entryPrice) / entryPrice * 100;
+      } else if (typeof pctVal !== 'number') {
+        pctVal = parseFloat(pctVal);
+      }
+      return { 
+        price: Number((priceVal || entryPrice).toFixed(4)), 
+        percentage: Number((pctVal || 0).toFixed(2)) 
+      };
+    }),
     stopLossPrice: Number(stopLossPrice.toFixed(4)),
     stopLossReason,
     expectedDuration: aiResult.expectedDuration || '2 to 4 hours',
     lkrBudget,
     usdToLkr: Number(usdToLkr.toFixed(2)),
     usdBudget: Number(usdBudget.toFixed(2)),
+    marginUsdt: Number(usdBudget.toFixed(2)),
+    positionSizeUsdt: Number(positionSizeUsdt.toFixed(2)),
+    leverageUsed: leverage,
     coinsToBuy: Number(coinsToBuy.toFixed(4)),
+    estimatedFeesUsd: Number(estimatedFeesUsd.toFixed(2)),
     potentialProfitLkr: Number(potentialProfitLkr.toFixed(2)),
     potentialProfitUsd: Number(potentialProfitUsd.toFixed(2)),
     potentialLossLkr: Number(potentialLossLkr.toFixed(2)),
@@ -545,11 +587,22 @@ Output a strict JSON object with these exact fields:
 
 Respond ONLY with valid raw JSON.`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
+  const session = await supabase.auth.getSession();
+  const token = session?.data?.session?.access_token;
+  if (!token) {
+    throw new Error('Active session required for AI Evaluation.');
+  }
+
+  const res = await fetch('/api/gemini', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      promptText,
+      modelName: 'gemini-flash-latest'
+    })
   });
 
   if (res.ok) {

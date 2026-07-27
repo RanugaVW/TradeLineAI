@@ -659,6 +659,29 @@ class App {
       }
     }
 
+    if (this.chartViewer.showSwiftAlgo !== state.showSwiftAlgo) {
+      if (state.showSwiftAlgo && this.userProfile && this.userProfile.role === 'free') {
+        if (this.isFullyInitialized) {
+          const paywallModal = document.getElementById('paywall-modal');
+          if (paywallModal) {
+            paywallModal.classList.remove('hidden');
+          }
+        }
+        // Revert UI toggle silently
+        this.controlsBar.state.showSwiftAlgo = false;
+        this.controlsBar.render();
+        state.showSwiftAlgo = false;
+      }
+      this.chartViewer.showSwiftAlgo = state.showSwiftAlgo;
+      if (!state.showSwiftAlgo) {
+        this.chartViewer.clearSwiftAlgo();
+      } else {
+        if (this.lastPatterns) {
+          this.chartViewer.renderSwiftAlgo(this.chartViewer.currentCandles); // Swift Algo needs just candles, we'll implement it
+        }
+      }
+    }
+
     if (alertEngine && typeof alertEngine.setSniperMode === 'function') {
       alertEngine.setSniperMode(state.sniperMode);
     }

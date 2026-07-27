@@ -56,7 +56,8 @@ export class ControlsBar {
       showRSI: false,
       showMACD: false,
       showLabels: false, // Default to NOT showing labels
-      showSMC: true,
+      showSMC: false,
+      showSwiftAlgo: false,
       sniperMode: false,
       timezone: 'local',
       zoomPct: 100,
@@ -191,9 +192,27 @@ export class ControlsBar {
               <button type="button" id="toggle-heatmap-btn" class="pill-btn ${this.state.showHeatmap ? 'active' : ''}" title="Toggle Price Heatmap (Volume Profile) to see Point of Control and High Volume Nodes" style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">
                 <i data-lucide="bar-chart-2"></i> Heatmap
               </button>
-              <button type="button" id="toggle-smc-btn" class="pill-btn ${this.state.showSMC ? 'active' : ''}" title="Toggle Smart Money Concepts (SMC) Indicator" style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">
-                <i data-lucide="activity"></i> SMC Indicator
-              </button>
+              <!-- Indicators Dropdown -->
+              <div class="custom-dropdown-container" style="margin-left: 5px;">
+                <button type="button" class="dropdown-trigger pill-btn ${(this.state.showSMC || this.state.showSwiftAlgo) ? 'active' : ''}" id="indicators-dropdown-trigger" style="padding: 4px 8px; font-size: 11px;">
+                  <i data-lucide="activity"></i> Indicators <i data-lucide="chevron-down" style="width: 12px; height: 12px; margin-left: 2px;"></i>
+                </button>
+                <div class="dropdown-menu" id="indicators-dropdown-menu" style="right: 0; left: auto; min-width: 220px;">
+                  <div class="dropdown-section">
+                    <div class="dropdown-section-title">PRO ALGORITHMS</div>
+                    <div class="dropdown-items">
+                      <label class="dropdown-checkbox-item" title="Smart Money Concepts: Identifies institutional order blocks, fair value gaps (FVG), and liquidity sweeps to predict reversals." style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; cursor: pointer; color: #d1d5db; font-size: 13px;">
+                        <input type="checkbox" id="toggle-smc-cb" ${this.state.showSMC ? 'checked' : ''} style="cursor: pointer; accent-color: var(--accent-blue);">
+                        <span>Smart Money Concepts (SMC)</span>
+                      </label>
+                      <label class="dropdown-checkbox-item" title="Swift Algo X: Trend-following momentum indicator. Best used in highly volatile or trending markets. Automatically calculates Stop Loss & Take Profit targets." style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; cursor: pointer; color: #d1d5db; font-size: 13px;">
+                        <input type="checkbox" id="toggle-swift-cb" ${this.state.showSwiftAlgo ? 'checked' : ''} style="cursor: pointer; accent-color: var(--accent-orange);">
+                        <span>Swift Algo X (Auto TP/SL)</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -418,14 +437,39 @@ export class ControlsBar {
       this.onChange(this.state);
     });
 
-    const toggleSmcBtn = this.container.querySelector('#toggle-smc-btn');
-    toggleSmcBtn?.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.state.showSMC = !this.state.showSMC;
-      this.render();
-      this.onChange(this.state);
-    });
+    const indTrigger = this.container.querySelector('#indicators-dropdown-trigger');
+    const indMenu = this.container.querySelector('#indicators-dropdown-menu');
+    if (indTrigger && indMenu) {
+      indTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        indMenu.classList.toggle('show');
+      });
+      // Close dropdown if clicked outside
+      document.addEventListener('click', (e) => {
+        if (!indTrigger.contains(e.target) && !indMenu.contains(e.target)) {
+          indMenu.classList.remove('show');
+        }
+      });
+    }
 
+    const toggleSmcCb = this.container.querySelector('#toggle-smc-cb');
+    if (toggleSmcCb) {
+      toggleSmcCb.addEventListener('change', (e) => {
+        this.state.showSMC = e.target.checked;
+        this.render();
+        this.onChange(this.state);
+      });
+    }
+
+    const toggleSwiftCb = this.container.querySelector('#toggle-swift-cb');
+    if (toggleSwiftCb) {
+      toggleSwiftCb.addEventListener('change', (e) => {
+        this.state.showSwiftAlgo = e.target.checked;
+        this.render();
+        this.onChange(this.state);
+      });
+    }
+    
     // Timezone Select
     const tzSelect = this.container.querySelector('#timezone-select');
     tzSelect?.addEventListener('change', (e) => {

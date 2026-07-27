@@ -238,6 +238,8 @@ CREATE TABLE IF NOT EXISTS public.demo_trades (
   signal TEXT NOT NULL,
   leverage NUMERIC NOT NULL DEFAULT 1,
   investment_amount NUMERIC NOT NULL, -- The margin used
+  quantity NUMERIC NOT NULL,
+  margin_type TEXT DEFAULT 'ISOLATED',
   entry_price NUMERIC NOT NULL,
   tp1 NUMERIC,
   tp2 NUMERIC,
@@ -267,3 +269,11 @@ CREATE POLICY "Users can insert own demo trades"
 DROP POLICY IF EXISTS "Users can update own demo trades" ON public.demo_trades;
 CREATE POLICY "Users can update own demo trades" 
   ON public.demo_trades FOR UPDATE USING (auth.uid() = user_id);
+
+-- Performance Indexes for Production Scale
+CREATE INDEX IF NOT EXISTS idx_demo_trades_user_status_time
+  ON public.demo_trades(user_id, status, open_time DESC);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_user_role
+  ON public.profiles(id, role);
+

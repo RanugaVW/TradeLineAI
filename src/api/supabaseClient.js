@@ -4,14 +4,14 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = (import.meta.env && import.meta.env.VITE_SUPABASE_URL) || 'https://sucurpxaeojyawgherrf.supabase.co';
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 
-// Public Anon / Publishable API Key
-const SUPABASE_ANON_KEY = (import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY && !import.meta.env.VITE_SUPABASE_ANON_KEY.includes('placeholder'))
-  ? import.meta.env.VITE_SUPABASE_ANON_KEY
-  : 'sb_publishable_aVSKZKqWpmq6aUNdQ13Ifw_caJ1d-VQ';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('FATAL: Supabase URL or Publishable Anon Key environment variables are missing.');
+}
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient(SUPABASE_URL || 'https://placeholder.supabase.co', SUPABASE_ANON_KEY || 'placeholder', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

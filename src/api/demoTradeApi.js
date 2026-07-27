@@ -58,7 +58,9 @@ export async function placeDemoTrade(tradeData) {
         symbol: tradeData.symbol,
         signal: tradeData.signal,
         leverage: tradeData.leverage || 1,
-        investment_amount: tradeData.investment_amount,
+        investment_amount: tradeData.investment_amount, // Margin
+        quantity: tradeData.quantity, // Exact position size
+        margin_type: tradeData.margin_type || 'ISOLATED',
         entry_price: tradeData.entry_price,
         tp1: tradeData.tp1,
         tp2: tradeData.tp2,
@@ -96,14 +98,23 @@ export async function closeDemoTrade(tradeId, currentPrice) {
 
     // Calculate PNL
     const entryPrice = parseFloat(trade.entry_price);
-    const amountCrypto = trade.investment_amount * trade.leverage / entryPrice;
+    const amountCrypto = parseFloat(trade.quantity) || (trade.investment_amount * trade.leverage / entryPrice);
+    
+    // Exact PNL matching Binance math (Position Size * Price Move %)
     let pnl = 0;
-
-    if (trade.signal.includes('BUY')) {
-      pnl = (currentPrice - entryPrice) * amountCrypto;
-    } else if (trade.signal.includes('SELL')) {
+    const direction = trade.signal.includes('SELL') ? 'short' : 'long';
+    
+    if (direction === 'short') {
       pnl = (entryPrice - currentPrice) * amountCrypto;
+    } else {
+      pnl = (currentPrice - entryPrice) * amountCrypto;
     }
+    
+    // Apply standard Binance fees (approx 0.05% Taker * 2 for entry/exit)
+    const positionSizeUsdt = amountCrypto * currentPrice; 
+    const feeRate = 0.0005;
+    const estimatedFees = positionSizeUsdt * feeRate * 2;
+    pnl -= estimatedFees;
 
     // Update Trade
     const { data: updatedTrade, error: updateError } = await supabase
