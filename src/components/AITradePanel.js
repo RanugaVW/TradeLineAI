@@ -425,8 +425,29 @@ export class AITradePanel {
   }
 
   openFocusedModal() {
-    if (this.aiData && this.modal) {
-      this.modal.open(this.aiData, this.marketContext);
+    if (!this.modal) {
+      console.error('[AITradePanel] modal not initialised');
+      return;
+    }
+    if (!this.aiData) {
+      console.warn('[AITradePanel] no aiData yet – generate a trade plan first');
+      alert('Please generate an AI Trade Plan first before opening the analysis modal.');
+      return;
+    }
+    try {
+      // Ensure marketContext always has the required shape
+      const ctx = this.marketContext || {};
+      const safeCtx = {
+        symbol: ctx.symbol || 'UNKNOWN',
+        currentPrice: ctx.currentPrice || this.aiData.entryPrice || 0,
+        candles: Array.isArray(ctx.candles) ? ctx.candles : [],
+        supportLines: Array.isArray(ctx.supportLines) ? ctx.supportLines : [],
+        resistanceLines: Array.isArray(ctx.resistanceLines) ? ctx.resistanceLines : [],
+      };
+      this.modal.open(this.aiData, safeCtx);
+    } catch (err) {
+      console.error('[AITradePanel] Failed to open focused modal:', err);
+      alert('Could not open the analysis modal. Check the browser console for details.');
     }
   }
 

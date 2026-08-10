@@ -20,12 +20,19 @@ export class AITradeModal {
 
     const { symbol = 'PI-USDT', currentPrice = 0, candles = [], supportLines = [], resistanceLines = [] } = marketContext || {};
 
+    // Derive take profit price from levels (TP3) if aiData.takeProfitPrice is missing
+    const takeProfitPrice = aiData.takeProfitPrice || 
+                            (aiData.takeProfitLevels && aiData.takeProfitLevels.length > 0 
+                                ? aiData.takeProfitLevels[aiData.takeProfitLevels.length - 1].price 
+                                : 0) || 0;
+
     // Slice ONLY the relevant recent candle slice (last 40 candles)
     const recentCandles = candles.length > 40 ? candles.slice(candles.length - 40) : candles;
-    const livePrice = currentPrice || (candles.length > 0 ? candles[candles.length - 1].close : aiData.entryPrice);
+    const rawPrice = currentPrice || (candles.length > 0 ? candles[candles.length - 1].close : 0) || aiData.entryPrice || 0;
+    const livePrice = Number(rawPrice) || 0;
 
     const supPrice = supportLines[0] ? supportLines[0].price : (aiData.entryPrice * 0.96);
-    const resPrice = resistanceLines[0] ? resistanceLines[0].price : aiData.takeProfitPrice;
+    const resPrice = supportLines[0] ? supportLines[0].price : takeProfitPrice;
     const supBounces = supportLines[0] ? supportLines[0].bounces : 3;
     const resBounces = resistanceLines[0] ? resistanceLines[0].bounces : 3;
 
@@ -77,7 +84,7 @@ export class AITradeModal {
                 <div class="path-step-card step-target">
                   <span class="step-icon"><i data-lucide="target" style="width: 20px; height: 20px;"></i></span>
                   <div class="step-text">
-                    <strong>3. TARGET PROFIT (TP):</strong> Target resistance ceiling at <strong>$${aiData.takeProfitPrice.toFixed(4)}</strong> (+$${aiData.potentialProfitUsd} / +LKR ${aiData.potentialProfitLkr.toLocaleString()}).
+                    <strong>3. TARGET PROFIT (TP):</strong> Target resistance ceiling at <strong>$${takeProfitPrice.toFixed(4)}</strong> (+$${aiData.potentialProfitUsd} / +LKR ${aiData.potentialProfitLkr?.toLocaleString() || 0}).
                   </div>
                 </div>
               </div>
@@ -103,26 +110,26 @@ export class AITradeModal {
             <div class="modal-payout-grid">
               <div class="payout-card">
                 <span class="payout-label">LKR Budget</span>
-                <span class="payout-val">LKR ${aiData.lkrBudget.toLocaleString()}</span>
-                <small class="payout-sub">≈ $${aiData.usdBudget} USD</small>
+                <span class="payout-val">LKR ${aiData.lkrBudget?.toLocaleString() || 0}</span>
+                <small class="payout-sub">≈ $${aiData.usdBudget || 0} USD</small>
               </div>
 
               <div class="payout-card primary-card">
                 <span class="payout-label">Coins to Buy</span>
-                <span class="payout-val">${aiData.coinsToBuy} ${symbol.split('-')[0].split('/')[0]}</span>
+                <span class="payout-val">${aiData.coinsToBuy || 0} ${symbol.split('-')[0].split('/')[0]}</span>
                 <small class="payout-sub">Entry @ $${aiData.entryPrice}</small>
               </div>
 
               <div class="payout-card profit-card">
                 <span class="payout-label">Target Profit (TP)</span>
-                <span class="payout-val">+$${aiData.potentialProfitUsd}</span>
-                <small class="payout-sub">+LKR ${aiData.potentialProfitLkr.toLocaleString()} (@ $${aiData.takeProfitPrice})</small>
+                <span class="payout-val">+$${aiData.potentialProfitUsd || 0}</span>
+                <small class="payout-sub">+LKR ${aiData.potentialProfitLkr?.toLocaleString() || 0} (@ $${takeProfitPrice.toFixed(4)})</small>
               </div>
 
               <div class="payout-card loss-card">
                 <span class="payout-label">Max Risk (SL)</span>
-                <span class="payout-val">-$${(aiData.usdBudget - (aiData.stopLossPrice * aiData.coinsToBuy)).toFixed(2)}</span>
-                <small class="payout-sub">-LKR ${aiData.potentialLossLkr.toLocaleString()} (@ $${aiData.stopLossPrice})</small>
+                <span class="payout-val">-$${((aiData.usdBudget || 0) - ((aiData.stopLossPrice || 0) * (aiData.coinsToBuy || 0))).toFixed(2)}</span>
+                <small class="payout-sub">-LKR ${aiData.potentialLossLkr?.toLocaleString() || 0} (@ $${aiData.stopLossPrice})</small>
               </div>
             </div>
           </div>
@@ -138,6 +145,7 @@ export class AITradeModal {
         </div>
       </div>
     `;
+
 
     this.overlay.classList.add('is-visible');
 
@@ -282,14 +290,14 @@ export class AITradeModal {
       }
 
       // Draw Target Take Profit (TP) Line
-      if (aiData.takeProfitPrice) {
+      if (takeProfitPrice) {
         this.candlestickSeries.createPriceLine({
-          price: aiData.takeProfitPrice,
+          price: takeProfitPrice,
           color: '#3b82f6',
           lineWidth: 2,
           lineStyle: 2,
           axisLabelVisible: true,
-          title: `ENTRY ($${aiData.entryPrice.toFixed(4)})`
+          title: `TARGET ($${takeProfitPrice.toFixed(4)})`
         });
       }
 

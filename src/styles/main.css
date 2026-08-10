@@ -5367,3 +5367,69 @@ img.protected-image {
   border-bottom: 1px solid rgba(255,255,255,0.1);
   padding-bottom: 2px;
 }
+
+/* =========================================================
+   LANDING PAGE — TABS
+   ========================================================= */
+
+/* Tab nav bar — floats above the hero, centred */
+.lp-tabs-nav {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(13, 17, 26, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  margin: 0 auto;
+  width: fit-content;
+  /* Stick to the top of the landing zone */
+  align-self: flex-start;
+  margin-top: 20px;
+}
+
+.lp-tab-btn {
+  padding: 8px 28px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.lp-tab-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.lp-tab-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* Panels */
+.lp-tab-panel {
+  width: 100%;
+  animation: lpFadeIn 0.22s ease-out;
+}
+
+.lp-tab-panel--hidden {
+  display: none;
+}
+
+@keyframes lpFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

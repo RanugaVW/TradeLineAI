@@ -109,176 +109,190 @@
               style="font-weight: 900;">AI</span>
           </div>
 
-          <!-- Restored Blazity Layout Content over the new background -->
-          <div class="blazity-container"
-            style="position: relative; z-index: 10; margin: 100px auto 40px auto; flex-shrink: 0;">
-            <!-- Left Hero Content -->
-            <div class="blazity-hero-text">
-              <div class="blazity-brand" style="color: white; opacity: 0.8;">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none">
-                  <line x1="18" y1="20" x2="18" y2="10"></line>
-                  <line x1="12" y1="20" x2="12" y2="4"></line>
-                  <line x1="6" y1="20" x2="6" y2="14"></line>
-                </svg>
-                <span style="font-weight: 600;">TradeLine AI</span>
-              </div>
+          <!-- ===== LANDING PAGE TABS NAV ===== -->
+          <nav class="lp-tabs-nav" role="tablist" aria-label="Landing page sections">
+            <button class="lp-tab-btn active" role="tab" aria-selected="true"  aria-controls="lp-tab-home"    id="lp-nav-home"    onclick="lpSwitchTab('home')">Home</button>
+            <button class="lp-tab-btn"        role="tab" aria-selected="false" aria-controls="lp-tab-pricing" id="lp-nav-pricing" onclick="lpSwitchTab('pricing')">Pricing</button>
+          </nav>
 
-              <h1 class="blazity-headline" style="color: white;">
-                <span class="highlight-orange">Smart.</span> Crypto<br />
-                Trading Advisor
-              </h1>
+          <!-- ===== TAB: HOME ===== -->
+          <div id="lp-tab-home" class="lp-tab-panel" role="tabpanel" aria-labelledby="lp-nav-home">
 
-              <p class="blazity-subtitle" style="color: rgba(255, 255, 255, 0.7);">
-                Advanced Support & Resistance auto-detection for professional traders. Let AI Agents analyze your charts
-                and optimize your budget instantly.
-              </p>
-
-              <div class="blazity-cta-group">
-                <button type="button" id="lock-screen-signin-btn" class="blazity-btn-primary"
-                  style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; backdrop-filter: blur(5px);">
-                  Access Terminal
-                </button>
-                <a href="docs.html" class="blazity-btn-secondary"
-                  style="color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2);">
-                  View Documentation
-                </a>
-              </div>
-            </div>
-
-            <!-- Right Hero Graphic / App Mockup -->
-            <div class="blazity-hero-graphic">
-              <div class="app-mockup-window"
-                style="background: rgba(13, 17, 26, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-                <div class="mockup-header" style="border-bottom-color: rgba(255, 255, 255, 0.1);">
-                  <span class="dot red"></span>
-                  <span class="dot yellow"></span>
-                  <span class="dot green"></span>
-                  <div class="mockup-url" style="color: rgba(255, 255, 255, 0.5);">app.tradeline.ai</div>
+            <!-- Restored Blazity Layout Content over the new background -->
+            <div class="blazity-container"
+              style="position: relative; z-index: 10; margin: 60px auto 40px auto; flex-shrink: 0;">
+              <!-- Left Hero Content -->
+              <div class="blazity-hero-text">
+                <div class="blazity-brand" style="color: white; opacity: 0.8;">
+                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                  </svg>
+                  <span style="font-weight: 600;">TradeLine AI</span>
                 </div>
-                <div class="mockup-body">
-                  <div class="mockup-chart-placeholder">
-                    <div class="faux-annotation">FOCUS: Descending Triangle (Bilateral)</div>
 
-                    <!-- Faux Chart Elements (Descending Triangle) -->
-                    <!-- Top Slanted Trendline -->
-                    <div class="faux-line blue-trend"
-                      style="top: 20px; left: 10%; width: 85%; transform: rotate(10deg); transform-origin: top left;">
+                <h1 class="blazity-headline" style="color: white;">
+                  <span class="highlight-orange">Smart.</span> Crypto<br />
+                  Trading Advisor
+                </h1>
+
+                <p class="blazity-subtitle" style="color: rgba(255, 255, 255, 0.7);">
+                  Advanced Support &amp; Resistance auto-detection for professional traders. Let AI Agents analyze your charts
+                  and optimize your budget instantly.
+                </p>
+
+                <div class="blazity-cta-group">
+                  <button type="button" id="lock-screen-signin-btn" class="blazity-btn-primary"
+                    style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; backdrop-filter: blur(5px);">
+                    Access Terminal
+                  </button>
+                  <a href="docs.html" class="blazity-btn-secondary"
+                    style="color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2);">
+                    View Documentation
+                  </a>
+                </div>
+              </div>
+
+              <!-- Right Hero Graphic / App Mockup -->
+              <div class="blazity-hero-graphic">
+                <div class="app-mockup-window"
+                  style="background: rgba(13, 17, 26, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                  <div class="mockup-header" style="border-bottom-color: rgba(255, 255, 255, 0.1);">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <div class="mockup-url" style="color: rgba(255, 255, 255, 0.5);">app.tradeline.ai</div>
+                  </div>
+                  <div class="mockup-body">
+                    <div class="mockup-chart-placeholder">
+                      <div class="faux-annotation">FOCUS: Descending Triangle (Bilateral)</div>
+
+                      <!-- Faux Chart Elements (Descending Triangle) -->
+                      <!-- Top Slanted Trendline -->
+                      <div class="faux-line blue-trend"
+                        style="top: 20px; left: 10%; width: 85%; transform: rotate(10deg); transform-origin: top left;">
+                      </div>
+
+                      <!-- Middle Dotted Trendline -->
+                      <div class="faux-line red-dotted"
+                        style="top: 80px; left: 5%; width: 90%; transform: rotate(15deg); transform-origin: top left;">
+                      </div>
+
+                      <!-- Bottom Flat Support -->
+                      <div class="faux-line white-support" style="top: 230px; left: 10%; width: 75%;"></div>
+
+                      <!-- Candles (With wicks simulated by tall 2px lines behind them) -->
+                      <!-- High Swings (touching top blue line) -->
+                      <div class="candle-anim-group anim-1">
+                        <div class="faux-wick" style="height: 120px; left: 15%; top: 30px;"></div>
+                        <div class="faux-candle up" style="height: 90px; left: calc(15% - 3px); top: 50px;"></div>
+                      </div>
+
+                      <div class="candle-anim-group anim-3">
+                        <div class="faux-wick" style="height: 100px; left: 35%; top: 60px;"></div>
+                        <div class="faux-candle down" style="height: 60px; left: calc(35% - 3px); top: 80px;"></div>
+                      </div>
+
+                      <div class="candle-anim-group anim-5">
+                        <div class="faux-wick" style="height: 90px; left: 55%; top: 110px;"></div>
+                        <div class="faux-candle up" style="height: 50px; left: calc(55% - 3px); top: 130px;"></div>
+                      </div>
+
+                      <div class="candle-anim-group anim-7">
+                        <div class="faux-wick" style="height: 60px; left: 70%; top: 140px;"></div>
+                        <div class="faux-candle down" style="height: 40px; left: calc(70% - 3px); top: 150px;"></div>
+                      </div>
+
+                      <!-- Low Swings (touching bottom white line) -->
+                      <div class="candle-anim-group anim-2">
+                        <div class="faux-wick" style="height: 130px; left: 25%; top: 110px;"></div>
+                        <div class="faux-candle down" style="height: 80px; left: calc(25% - 3px); top: 140px;"></div>
+                      </div>
+
+                      <div class="candle-anim-group anim-4">
+                        <div class="faux-wick" style="height: 90px; left: 45%; top: 150px;"></div>
+                        <div class="faux-candle up" style="height: 60px; left: calc(45% - 3px); top: 160px;"></div>
+                      </div>
+
+                      <div class="candle-anim-group anim-6">
+                        <div class="faux-wick" style="height: 60px; left: 63%; top: 180px;"></div>
+                        <div class="faux-candle down" style="height: 40px; left: calc(63% - 3px); top: 190px;"></div>
+                      </div>
+
+                      <!-- The Breakout -->
+                      <div class="candle-anim-group anim-8">
+                        <div class="faux-wick" style="height: 80px; left: 82%; top: 140px;"></div>
+                        <div class="faux-candle up breakout-glow"
+                          style="height: 60px; left: calc(82% - 3px); top: 150px;"></div>
+                        <div class="faux-price-tag" style="top: 150px; left: 85%;">$0.0934</div>
+                      </div>
+
                     </div>
-
-                    <!-- Middle Dotted Trendline -->
-                    <div class="faux-line red-dotted"
-                      style="top: 80px; left: 5%; width: 90%; transform: rotate(15deg); transform-origin: top left;">
-                    </div>
-
-                    <!-- Bottom Flat Support -->
-                    <div class="faux-line white-support" style="top: 230px; left: 10%; width: 75%;"></div>
-
-                    <!-- Candles (With wicks simulated by tall 2px lines behind them) -->
-                    <!-- High Swings (touching top blue line) -->
-                    <div class="candle-anim-group anim-1">
-                      <div class="faux-wick" style="height: 120px; left: 15%; top: 30px;"></div>
-                      <div class="faux-candle up" style="height: 90px; left: calc(15% - 3px); top: 50px;"></div>
-                    </div>
-
-                    <div class="candle-anim-group anim-3">
-                      <div class="faux-wick" style="height: 100px; left: 35%; top: 60px;"></div>
-                      <div class="faux-candle down" style="height: 60px; left: calc(35% - 3px); top: 80px;"></div>
-                    </div>
-
-                    <div class="candle-anim-group anim-5">
-                      <div class="faux-wick" style="height: 90px; left: 55%; top: 110px;"></div>
-                      <div class="faux-candle up" style="height: 50px; left: calc(55% - 3px); top: 130px;"></div>
-                    </div>
-
-                    <div class="candle-anim-group anim-7">
-                      <div class="faux-wick" style="height: 60px; left: 70%; top: 140px;"></div>
-                      <div class="faux-candle down" style="height: 40px; left: calc(70% - 3px); top: 150px;"></div>
-                    </div>
-
-                    <!-- Low Swings (touching bottom white line) -->
-                    <div class="candle-anim-group anim-2">
-                      <div class="faux-wick" style="height: 130px; left: 25%; top: 110px;"></div>
-                      <div class="faux-candle down" style="height: 80px; left: calc(25% - 3px); top: 140px;"></div>
-                    </div>
-
-                    <div class="candle-anim-group anim-4">
-                      <div class="faux-wick" style="height: 90px; left: 45%; top: 150px;"></div>
-                      <div class="faux-candle up" style="height: 60px; left: calc(45% - 3px); top: 160px;"></div>
-                    </div>
-
-                    <div class="candle-anim-group anim-6">
-                      <div class="faux-wick" style="height: 60px; left: 63%; top: 180px;"></div>
-                      <div class="faux-candle down" style="height: 40px; left: calc(63% - 3px); top: 190px;"></div>
-                    </div>
-
-                    <!-- The Breakout -->
-                    <div class="candle-anim-group anim-8">
-                      <div class="faux-wick" style="height: 80px; left: 82%; top: 140px;"></div>
-                      <div class="faux-candle up breakout-glow"
-                        style="height: 60px; left: calc(82% - 3px); top: 150px;"></div>
-                      <div class="faux-price-tag" style="top: 150px; left: 85%;">$0.0934</div>
-                    </div>
-
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          <!-- End TAB: HOME -->
 
-          <!-- Pricing Section -->
-          <div class="pricing-section" style="flex-shrink: 0; padding-bottom: 100px;">
-            <div class="pricing-header">
-              <h2>Plans for every level of ambition</h2>
-            </div>
-
-            <div class="pricing-cards">
-              <!-- Free Tier -->
-              <div class="pricing-card">
-                <h3>Free Tier</h3>
-                <div class="pricing-price">$0 <span>/ 3 days max</span></div>
-                <p class="pricing-desc">Explore the platform with basic charting capabilities.</p>
-
-                <ul class="pricing-features">
-                  <li><i data-lucide="check" class="check"></i> Basic Charting Interface</li>
-                  <li><i data-lucide="check" class="check"></i> Limited Manual Tools</li>
-                  <li><i data-lucide="check" class="check"></i> Live Demo Trading</li>
-                  <li><i data-lucide="check" class="check"></i> Automated S/R Zones</li>
-                  <li><i data-lucide="x" class="cross"></i> No AI Market Advisor</li>
-                  <li><i data-lucide="x" class="cross"></i> No SMC Indicators</li>
-                  <li><i data-lucide="x" class="cross"></i> 3-Day Account Expiration</li>
-                </ul>
-
-                <button class="pricing-btn free"
-                  onclick="alert('You are automatically enrolled in the Free Tier upon registration.')">Included with
-                  Registration</button>
+          <!-- ===== TAB: PRICING ===== -->
+          <div id="lp-tab-pricing" class="lp-tab-panel lp-tab-panel--hidden" role="tabpanel" aria-labelledby="lp-nav-pricing">
+            <div class="pricing-section" style="flex-shrink: 0; padding: 60px 20px 100px;">
+              <div class="pricing-header">
+                <h2>Plans for every level of ambition</h2>
               </div>
 
-              <!-- Pro 1 Tier -->
-              <div class="pricing-card pro-tier">
-                <h3>Pro 1 Tier</h3>
-                <div class="pricing-price">$10 <span>/ mo</span></div>
-                <p class="pricing-desc">Full access to AI-driven insights and automated analysis.</p>
+              <div class="pricing-cards">
+                <!-- Free Tier -->
+                <div class="pricing-card">
+                  <h3>Free Tier</h3>
+                  <div class="pricing-price">$0 <span>/ 3 days max</span></div>
+                  <p class="pricing-desc">Explore the platform with basic charting capabilities.</p>
 
-                <ul class="pricing-features">
-                  <li><i data-lucide="check" class="check"></i> <strong>Full AI Advisor Access</strong></li>
-                  <li><i data-lucide="check" class="check"></i> Automated Support/Resistance</li>
-                  <li><i data-lucide="check" class="check"></i> Unlimited AI Polling</li>
-                  <li><i data-lucide="check" class="check"></i> Smart Money Concepts (SMC)</li>
-                  <li><i data-lucide="check" class="check"></i> Live Demo Trading Facility</li>
-                  <li><i data-lucide="check" class="check"></i> Budget Optimization</li>
-                  <li><i data-lucide="check" class="check"></i> Monthly Account Access</li>
-                </ul>
+                  <ul class="pricing-features">
+                    <li><i data-lucide="check" class="check"></i> Basic Charting Interface</li>
+                    <li><i data-lucide="check" class="check"></i> Limited Manual Tools</li>
+                    <li><i data-lucide="check" class="check"></i> Live Demo Trading</li>
+                    <li><i data-lucide="check" class="check"></i> Automated S/R Zones</li>
+                    <li><i data-lucide="x" class="cross"></i> No AI Market Advisor</li>
+                    <li><i data-lucide="x" class="cross"></i> No SMC Indicators</li>
+                    <li><i data-lucide="x" class="cross"></i> 3-Day Account Expiration</li>
+                  </ul>
 
-                <button class="pricing-btn pro"
-                  onclick="alert('Please contact the System Admin to process your payment and upgrade your account manually.')">Buy
-                  Pro 1</button>
+                  <button class="pricing-btn free"
+                    onclick="alert('You are automatically enrolled in the Free Tier upon registration.')">Included with
+                    Registration</button>
+                </div>
+
+                <!-- Pro 1 Tier -->
+                <div class="pricing-card pro-tier">
+                  <h3>Pro 1 Tier</h3>
+                  <div class="pricing-price">$10 <span>/ mo</span></div>
+                  <p class="pricing-desc">Full access to AI-driven insights and automated analysis.</p>
+
+                  <ul class="pricing-features">
+                    <li><i data-lucide="check" class="check"></i> <strong>Full AI Advisor Access</strong></li>
+                    <li><i data-lucide="check" class="check"></i> Automated Support/Resistance</li>
+                    <li><i data-lucide="check" class="check"></i> Unlimited AI Polling</li>
+                    <li><i data-lucide="check" class="check"></i> Smart Money Concepts (SMC)</li>
+                    <li><i data-lucide="check" class="check"></i> Live Demo Trading Facility</li>
+                    <li><i data-lucide="check" class="check"></i> Budget Optimization</li>
+                    <li><i data-lucide="check" class="check"></i> Monthly Account Access</li>
+                  </ul>
+
+                  <button class="pricing-btn pro"
+                    onclick="alert('Please contact the System Admin to process your payment and upgrade your account manually.')">Buy
+                    Pro 1</button>
+                </div>
               </div>
             </div>
           </div>
-          <!-- End Pricing Section -->
+          <!-- End TAB: PRICING -->
 
         </div>
       </div>
+
 
       <!-- TradingView Drawing Sidebar Toolbar -->
       <div id="drawing-toolbar-container" class="drawing-toolbar-container"></div>
@@ -528,6 +542,33 @@
   <div id="demo-trading-container"></div>
 
   <script type="module" src="./src/main.js"></script>
+
+  <script>
+    /* ===== Landing Page Tab Switcher ===== */
+    function lpSwitchTab(tab) {
+      // Update panels
+      document.querySelectorAll('.lp-tab-panel').forEach(function(el) {
+        el.classList.add('lp-tab-panel--hidden');
+      });
+      var target = document.getElementById('lp-tab-' + tab);
+      if (target) target.classList.remove('lp-tab-panel--hidden');
+
+      // Update buttons
+      document.querySelectorAll('.lp-tab-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+      });
+      var activeBtn = document.getElementById('lp-nav-' + tab);
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.setAttribute('aria-selected', 'true');
+      }
+
+      // Re-render Lucide icons in newly revealed tab
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  </script>
+
 </body>
 
 </html>
