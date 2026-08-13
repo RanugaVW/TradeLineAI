@@ -14,6 +14,9 @@ TradeLine AI is an advanced, AI-powered Cryptocurrency Web Portal and Market Adv
 * **⏱️ Automated Alerts & Backtesting:** Background market polling for AI alerts and a built-in backtester to validate historical strategies.
 * **🔐 Secure Authentication:** Powered by Supabase for robust user management and data security.
 
+> **[📖 View Full Features & Documentation currently implemented](https://trade-line-ai.vercel.app/docs.html)**  
+> Check out our comprehensive documentation to see all the features currently available in the system.
+
 ---
 
 ## 🛠️ Tech Stack
