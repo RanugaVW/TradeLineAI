@@ -8,6 +8,10 @@ export default defineConfig({
   build: {
     minify: 'esbuild',
     rollupOptions: {
+      input: {
+        main: './index.html',
+        docs: './docs.html'
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
